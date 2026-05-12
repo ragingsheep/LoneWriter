@@ -1,7 +1,7 @@
 # 📐 LoneWriter — Project Scope & Capabilities
 
 > **Current Version:** v1.9-nexus  
-> **Last Updated:** 2026-05-11  
+> **Last Updated:** 2026-05-12  
 > **Document Purpose:** Comprehensive definition of the current scope, boundaries, and capabilities of LoneWriter — including planned features not yet implemented.
 
 ---
@@ -58,10 +58,18 @@ LoneWriter/
 ├── app/                   # Main React SPA (Vite)
 │   └── src/
 │       ├── components/    # AIPanel, RichEditor, Sidebar, Settings, etc.
-│       ├── views/         # Editor, Compendium, Nexus, Resources
-│       ├── services/      # aiService, ragService, exportService, mpcService, etc.
+│       │   └── aipanel/   # GenerateTab, RewriteTab, DebateTab, OracleTab
+│       ├── views/         # Editor, Compendium, Nexus, Resources, StorySettings
+│       │   ├── editor/    # EditorSortables, useEditorDnd
+│       │   └── compendium/# CompendiumCards, CompendiumPanel
+│       ├── services/      # aiService, ragService, exportService, mpcService,
+│       │                  # contextGatherer, compendiumSearch, entityDetector,
+│       │                  # googleDriveService
+│       │   └── providers/ # gemini, openai, claude, openrouter, local, fetchWithRetry
 │       ├── db/            # Dexie database schema (database.js)
 │       ├── context/       # NovelContext, AIContext, ModalContext
+│       │                  # useAIConfig, useAIMpc, useAIUsage, useCloudSync, useMergeEngine
+│       ├── hooks/         # useAppNavigation, useAppPreferences, useAppUI
 │       ├── utils/         # renderMarkdown, version
 │       └── i18n/          # Translation files (EN/ES), stopwords
 ├── docs/                  # VitePress documentation site
@@ -71,10 +79,24 @@ LoneWriter/
 
 ### 3.3 State Management
 
-- **3 React Contexts**: `NovelContext` (novel/compendium CRUD), `AIContext` (AI state, Oracle, Debate, MPC), `ModalContext` (modals)
-- **Cross-component events** via `window.dispatchEvent(new CustomEvent(...))`: `navigate-to-scene`, `navigate-to-compendium-item`, `cloud-version-available`, `open-oracle-panel`, `rag-model-*`, `toggle-stats`, `restore-from-revision`
+- **3 React Contexts**: `NovelContext` (novel/compendium CRUD), `AIContext` (AI state, Oracle, Debate, MPC, Generate), `ModalContext` (modals)
+- `AIContext` delegates to 4 extracted hooks: `useAIConfig` (providers, API keys, models), `useAIMpc` (MPC proposals and state), `useAIUsage` (token tracking), `useCloudSync` (Google Drive)
+- **3 App-level hooks** (`app/src/hooks/`): `useAppNavigation`, `useAppPreferences`, `useAppUI` — extracted from `App.jsx` for clarity
+- **Cross-component events** via `window.dispatchEvent(new CustomEvent(...))`:
 
-### 3.4 Database Schema (Dexie v14 — 21 tables)
+| Event | Direction | Purpose |
+|---|---|---|
+| `navigate-to-scene` | → NovelContext | Open a scene in the Editor |
+| `navigate-to-compendium-item` | → CompendiumView | Open an entity's edit panel |
+| `cloud-version-available` | → App.jsx | Prompt to restore a newer cloud backup |
+| `restore-from-revision` | → App.jsx | Restore a specific Drive revision |
+| `open-oracle-panel` | → AIPanel | Open and switch to Oracle tab |
+| `rag-model-loading` / `rag-model-progress` / `rag-model-ready` / `rag-model-error` | → RagToast | Embedding model download progress |
+| `toggle-stats` | → EditorView | Expand the stats panel |
+| `ai-apply-generate` | → Editor (RichEditor) | Insert generated HTML at cursor position |
+| `mpc-manual-scan` | → EditorView | Trigger a manual MPC analysis run |
+
+### 3.4 Database Schema (Dexie v15 — 22 tables; v16 planned — 23 tables)
 
 | Table | Purpose |
 |---|---|
@@ -99,6 +121,8 @@ LoneWriter/
 | `customStopwords` | User-defined entity-detection filters |
 | `editorPrefs` | Editor visual preferences |
 | `nexusLinks` | Manual relationship links for Nexus graph |
+| `generateHistory` | AI Generate tab history per scene (v15) |
+| `novelSettings` | Per-novel prose settings (tense, language, POV) — **planned v16** |
 
 ---
 
@@ -109,14 +133,17 @@ LoneWriter/
 **In scope:**
 - Three-level hierarchy: **Acts → Chapters → Scenes**
 - Rich-text scene editor (Tiptap): bold, italic, headings, lists
-- Per-scene metadata: title, POV character, in-game date, status
-- Drag-and-drop reordering (`@dnd-kit`)
+- Per-scene metadata: title, POV type + character, in-game date, status
+  - **POV defaults to the novel-level setting** (from Story Settings §4.14) but can be overridden independently on any individual scene — the override only affects that scene
+- Per-scene synopsis field with AI auto-generation (10-word "telegram" summary via `aiService.summarizeScene`)
+- Drag-and-drop reordering (`@dnd-kit`): scenes within chapters, chapters across acts
 - Collapsible, resizable narrative tree panel
 - Fixed sticky editor toolbar
 - Real-time word count and daily progress tracking with goals
 - Continuous chapter numbering across acts
 - Responsive mobile layout with drawer navigation (`< 768px`)
 - Node expansion/collapse state persisted per novel
+- Landscape orientation warning overlay
 
 **Out of scope:**
 - Comment/annotation system · Version control / tracked changes · Markdown import into tree
@@ -132,7 +159,7 @@ LoneWriter/
 - Per-entity Oracle exclusion toggle (`ignoredForOracle`)
 - "AI Context" badge per card
 - AI auto-complete of entity fields from novel text
-- AI entity merging (detect duplicates, fuse via AI)
+- AI entity merging (detect duplicates, fuse via AI) — supports both 2-entity and multi-entity merge
 - Navigation from Nexus graph double-click
 
 **Out of scope:**
@@ -142,81 +169,64 @@ LoneWriter/
 
 ### 4.3 AI Assistant Panel
 
-The AI panel has four tabs: **Generate** *(not yet implemented)*, **Rewrite**, **Debate**, and **Oracle**.
+The AI panel has four tabs: **Generate**, **Rewrite**, **Debate**, and **Oracle**.
 
-#### 4.3.1 Generate Tab `[IMPLEMENTATION IN PROGRESS]`
+#### 4.3.1 Generate Tab ✅ `[IMPLEMENTED]`
 
 The Generate tab produces **new** scene prose — distinct from Rewrite (which transforms existing text). It is a composition aid driven entirely by an explicit user prompt; it never writes autonomously.
 
 **In scope:**
 
 *Prompt & Intent*
-- Mandatory **free-text prompt** — user describes what the AI should write (e.g. "Mara discovers the letter hidden behind the portrait"); generation cannot start without a prompt
+- Mandatory **free-text prompt** — user describes what the AI should write; generation cannot start without a prompt
 - Optional **tone/style hint** (e.g. "tense and atmospheric")
 - **Word count target** — numeric input; sent as a hard directive in the prompt
-- Text is inserted at the **current cursor position** in the editor; any existing text after the cursor remains in place
-- Cursor position is tracked at the **`Editor.jsx` view level** and passed to the Generate tab (not managed in AIContext)
+- Text is inserted at the **current cursor position** in the editor via the `ai-apply-generate` custom event; any existing text after the cursor remains in place
 
 *Automatic Context Injection*
-- **Compendium context** — relevant entities detected in the active scene are auto-included (same mechanism as Oracle/Rewrite)
 - **POV character** — auto-populated from the scene's POV field
-- **Previous text scope** — a new **context-gathering utility** (`services/contextGatherer.js`) provides the following user-selectable options:
-  - `Previous X words (current scene)` — user specifies a word count (e.g. 500); pulls the last X words before the cursor in the active scene
-  - `Current scene (full)` — entire text of the active scene
-  - `Previous N scenes` — user specifies N; the N scenes immediately before the active one in narrative order
-  - `Previous chapter` — complete text of the chapter preceding the active chapter
-  - `Entire novel` — all written text; **if estimated tokens exceed ~75k (using a `words × 1.3` heuristic), a warning is shown** with the estimated size so the user can decide to proceed or narrow the scope
-- **Knowledge Base (Resources)** — optional toggle to inject uploaded reference files
+- **Previous text scope** — provided by `services/contextGatherer.js`:
+  - `none` — no prior-text context
+  - `prevWords` — last X words before cursor in the active scene (user specifies X)
+  - `currentScene` — full text of the active scene
+  - `prevScenes` — N scenes immediately before the active one (user specifies N)
+  - `prevChapter` — all scenes in chapters before the active chapter
+  - `entireNovel` — all written text; **if estimated tokens exceed ~75k (using `words × 1.3` heuristic), a warning is shown**
+- **Knowledge Base (Resources)** — optional toggle to inject active reference files
 
 *Output, Preview & Streaming*
-- AI response is **streamed per-word as plain text** into a preview panel within the Generate tab (side panel, not inline); the author watches the output build word-by-word in real time
-- On Accept, plain text is **converted to HTML** (`<p>`, `<strong>`, `<em>`) before insertion — consistent with the rest of the app. This avoids parsing partial HTML during the stream.
-- Preview is **read-only during streaming**; Accept/Reject/Regenerate buttons disabled until complete
-- **Stop button** — visible during streaming; aborts the stream mid-generation and **keeps whatever text has been received so far** in the preview, allowing the author to Accept the partial result
-- **Accept Partial** button — visible during streaming alongside Stop; accepts whatever has been received so far without waiting for the stream to finish (Generate-only feature, not in Rewrite)
-- On completion (or Stop):
-  - **Accept** — converts to HTML and inserts at the cursor position in the Tiptap editor
-  - **Reject / Discard** — shows a **confirmation modal** (`openModal('confirm', ...)`) before clearing the preview — consistent with Rewrite's discard flow
-  - **Regenerate** — re-runs the same prompt+context; replaces current preview
-
-*UI Pattern (Consistency with Rewrite Tab)*
-
-The Generate tab must follow the same UI conventions as the Rewrite tab:
-
-| Pattern | Rewrite | Generate (required) |
-|---|---|---|
-| **Error handling** | `openModal('confirm', ...)` branded modal | Same — no inline error banners for API errors |
-| **Empty scene guard** | Checks `!selection`, shows modal if empty | Must check `!activeScene`, show modal if no scene selected |
-| **Result header** | `Sparkles` icon + label + Copy button + Regenerate icon button | Same — result header must include Copy and Regenerate icon buttons |
-| **Result footer** | Shows goal/metadata tag (e.g. `⚡ Style`) | Must show scope + word count tag (e.g. `📝 Current scene · 500w`) |
-| **Discard confirmation** | `openModal('confirm', { isDanger: true, ... })` | Same — never silently discard a generated result |
-| **DOM IDs** | `id="rewrite-submit-btn"`, `id="rewrite-apply-btn"`, etc. | Must have `id="generate-submit-btn"`, `id="generate-apply-btn"`, `id="generate-discard-btn"`, `id="generate-stop-btn"`, `id="generate-copy-btn"` |
-| **Token usage logging** | Calls `logAIUsage(response.usage)` after every AI call | Same — must call `logAIUsage` after stream completes (or on Stop with partial result) |
-| **CSS class naming** | `rewrite-section`, `rewrite-result`, `rewrite-actions`, etc. | `generate-section`, `generate-result`, `generate-actions`, etc. (already correct) |
-| **Section label style** | `rewrite-section__label` — icon + uppercase 10px + 0.07em tracking | Same — already matched |
+- AI response is **streamed per-chunk** into a read-only preview panel within the Generate tab via `AIService.generateStream()` (async generator)
+- On Accept, plain text is **converted to HTML** (`<p>`, `<br/>`) before insertion at the cursor position
+- Preview is **read-only during streaming**
+- **Stop button** — visible during streaming; aborts the stream via `AbortController` and keeps partial text in the preview
+- **Accept Partial** button — visible alongside Stop during streaming; accepts the partial result immediately
+- On completion:
+  - **Accept** — converts to HTML and dispatches `ai-apply-generate`; clears the prompt form
+  - **Reject / Discard** — clears the preview (no confirmation modal in current implementation)
+  - **Regenerate** — re-runs the same prompt+context; if editing from history, overwrites that record
 
 *History & Persistence (Per Scene)*
-- Every generation saved to a new **`generateHistory`** IndexedDB table (`novelId + sceneId + createdAt`)
-- Record stores: prompt, tone hint, word count target, context scope, AI response HTML, timestamp
+- Every accepted generation saved to the `generateHistory` IndexedDB table
+- Record stores: `prompt`, `toneHint`, `wordCountTarget`, `contextScope`, `contextDescription`, `responseHtml`, `responseText`, `createdAt`
 - History scoped to the **active scene** — only shows history for the scene being edited
-- Scrollable history log in the Generate tab below prompt controls
-- **Editing from history**: loads prompt + settings back; on Regenerate, the record is **overwritten** (no separate copy)
+- Collapsible history log in the Generate tab below the prompt controls
+- **Load from history**: restores prompt + settings; clicking Regenerate **overwrites** the record (via `overwriteGeneration`)
+- History entries can be individually deleted
 - History included in `.lwrt` project export
 
 *Provider & Reliability*
 - All 5 providers: Gemini, OpenAI, Claude, OpenRouter, Local (LM Studio / Ollama)
-- Exponential backoff retry on non-streaming errors (3-attempt policy)
-- Clear loading/streaming state with disabled UI during generation
+- Streaming via `callGeminiStream`, `callOpenAIStream`, `callClaudeStream`, `callOpenRouterStream`, `callLocalStream` in provider modules
 
 **Out of scope:**
-- Multi-scene batch generation · Auto-write without user prompt · Inline ghost text / editor decoration · Content generation outside the active novel
+- Multi-scene batch generation · Auto-write without user prompt · Inline ghost text / editor decoration · Content generation outside the active novel · Discard confirmation modal (Reject clears silently)
 
 ---
 
 #### 4.3.2 Rewrite Tab
 
 **In scope:**
-- Rewrite selected text with configurable goals: **Style**, **Tone**, **Length**, **Pacing**, **POV**, **Language** (Globe icon for translation/register change)
+- Rewrite selected text with configurable goals: **Style**, **Tone**, **Length**, **Clarity**, **Rhythm**, **Cohesion**, **Character** (POV-based rewrite), **Language** (Globe icon for translation/register change)
 - Optional previous-paragraph context for stylistic continuity
 - Optional Knowledge Base injection
 - Rewrite history per scene in IndexedDB (`lastRewrite`)
@@ -234,8 +244,10 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 - Multi-agent debate for critical scene feedback
 - Custom AI agents with user-defined system prompts, configurable rounds
 - Persistent sessions in IndexedDB, auto-named from scene metadata
+- Multiple sessions per novel; session list with rename/delete; session switch persisted in `localStorage`
+- Legacy `debate_history` localStorage migration on first load
 - Agents receive: system prompt, scene content, POV, Compendium context, Knowledge Base, RAG context
-- Role-locked agents (first-person enforcement directive)
+- Role-locked agents (first-person enforcement directive + language directive)
 - All 5 providers · Markdown rendering of responses
 
 **Out of scope:**
@@ -267,6 +279,7 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 - Web Worker (`ragWorker.js`) for non-blocking embedding
 - Vectors stored per paragraph in IndexedDB (`vectors`)
 - Used by Oracle and Debate for past-manuscript context retrieval
+- Auto-indexing of unvectorized scenes on `switchNovel`
 - Toast notification during model loading
 
 **Out of scope:**
@@ -277,11 +290,14 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 ### 4.5 MPC — Compendium Proposal Monitor
 
 **In scope:**
-- Real-time entity detection as the user writes (debounced, 15s cooldown)
+- **Opt-in** feature (disabled by default; toggled via `localStorage` key `ai_mpc_enabled`)
+- Real-time entity detection as the user writes (debounced 2s, 15s AI cooldown between calls)
 - Detects potential characters, locations, objects, lore
+- Manual scan trigger via `mpc-manual-scan` custom event
 - Non-intrusive purple proposal drawer
 - One-click "Add to Compendium" or "Edit" (saves then opens panel)
 - Permanent dismissal per entity name/type (`mpcIgnored`)
+- Proposals persisted per novel in `localStorage` (`mpc_prop_{novelId}`)
 - Configurable via Oracle Stopwords
 
 **Out of scope:**
@@ -321,7 +337,7 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 ### 4.8 Export & Import
 
 **In scope:**
-- **`.lwrt` export**: gzip + base64 snapshot of all IndexedDB tables
+- **`.lwrt` export**: gzip + base64 snapshot of all IndexedDB tables (including `generateHistory`)
 - **Encrypted `.lwrt`**: AES-GCM 256-bit, PBKDF2 200k iterations, SHA-256
 - **`.lwrt` import**: auto-detects encrypted / plain / legacy JSON; re-prompts on wrong password
 - **Scene `.docx`** export (single scene)
@@ -354,10 +370,11 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 - Per-provider config in IndexedDB (`aiProviderConfigs`)
 - ⚡ Test Connection button
 - Token usage tracking (`aiUsage`)
-- Exponential backoff retry (3 attempts, up to 8s)
+- Exponential backoff retry (3 attempts, up to 8s) — non-streaming calls only
+- Streaming (async generator) for Generate tab only
 
 **Out of scope:**
-- Streaming responses (except Generate tab) · Simultaneous multi-provider calls · Fine-tuning
+- Streaming responses on Rewrite/Debate/Oracle · Simultaneous multi-provider calls · Fine-tuning
 
 ---
 
@@ -372,6 +389,7 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 - Spring-easing animations on transitions
 - Resizable AI panel and narrative tree
 - PWA update modal
+- Landscape warning overlay on mobile
 
 **Out of scope:**
 - Custom user themes · OS dark/light auto-detection
@@ -399,6 +417,47 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 
 ---
 
+### 4.14 Story Settings `[NOT YET IMPLEMENTED]`
+
+A new top-level panel (alongside Editor, Compendium, Nexus, Resources) that holds **novel-level prose configuration**. These settings are stored per novel and injected into AI prompts at generation time. The exact prompt injection strategy is deferred to a later implementation phase — this scope covers the data model and UI only.
+
+#### Prose Settings
+
+| Setting | Type | Options / Format | Purpose |
+|---|---|---|---|
+| **Tense** | Toggle | `past` \| `present` | Narrative tense; passed to the AI as a prose directive |
+| **Language** | Free text | e.g. `General English`, `British English`, `Español` | Used for spell-checking, hyphenation, and AI register |
+| **POV Type** | Button group | `1st Person` \| `2nd Person` \| `3rd Person` \| `3rd Person (Limited)` \| `3rd Person (Omniscient)` | Novel-level default POV; each scene inherits this value but may override it independently (see §4.1) |
+| **POV Character** | Optional text | Character name | Meaningful when POV Type is `1st Person` or `3rd Person (Limited)`; optional otherwise. Scene-level POV character field works the same way — inherits novel default, overridable per scene |
+
+#### Data Model
+
+- New Dexie table **`novelSettings`** (Dexie v16):
+  ```
+  novelSettings: 'novelId'
+  ```
+  Keyed by `novelId` (one record per novel). Fields: `novelId`, `tense` (`'past'` \| `'present'`, default `'past'`), `language` (string, default `''`), `povType` (`'1st'` \| `'2nd'` \| `'3rd'` \| `'3rd_limited'` \| `'3rd_omniscient'`, default `'3rd'`), `povCharacter` (string, default `''`), `updatedAt`.
+- Settings are loaded into `NovelContext` alongside the active novel and exposed as `novelSettings` / `updateNovelSettings(novelId, patch)`.
+- Excluded from `DEVICE_ONLY_TABLES` — included in `.lwrt` export/import.
+- On `deleteNovel`, the corresponding `novelSettings` record must be deleted.
+
+#### UI
+
+- New view: `app/src/views/StorySettings.jsx` + `StorySettings.css`
+- **First item in the sidebar navigation** (above Editor)
+- Sections:
+  - **PROSE** — Tense, Language, POV (Type + Character) as shown in design
+  - Additional sections (Genre, Style Guide, etc.) reserved for future expansion
+- Each field shows a brief description of how it affects AI output
+- Settings auto-save on change (no explicit Save button)
+
+**Out of scope (this iteration):**
+- Prompt injection logic · Genre / style guide fields · Per-scene tense override · AI validation of settings consistency
+
+> **Design decision (2026-05-12):** Story Settings is the **first sidebar item**. Scene-level POV **inherits** the novel-level POV Type and Character as defaults; each scene can override both independently without affecting the novel default or other scenes.
+
+---
+
 ## 5. Platform & Deployment
 
 | Item | Status |
@@ -418,53 +477,29 @@ The Generate tab must follow the same UI conventions as the Rewrite tab:
 |---|---|
 | No cross-device sync without Google Drive | Data is device-local by default |
 | Full database export only | No per-novel selective export |
+| `generateHistory` not deleted on `deleteNovel` | Minor gap — orphan records remain in DB |
 | RAG limited to small model | `all-MiniLM-L6-v2`; larger models on roadmap |
 | Oracle per-scene only | No project-wide batch analysis |
 | MPC active on current scene only | Past scenes not retroactively scanned |
+| MPC disabled by default | Must be enabled per device in the AI panel |
 | No Nexus graph search/filter | Large graphs hard to navigate |
 | Claude CORS | Requires `anthropic-dangerous-direct-browser-access` header |
+| Generate discard is silent | No confirmation modal before clearing a generated result |
 
 ---
 
 ## 7. Roadmap Summary
 
 ### 🟢 High Priority
-- Mobile PWA polish · Anaphora optimization · Enhanced RAG memory
+- **Story Settings panel** (§4.14) — Dexie v16 table, view, NovelContext integration
+- Mobile PWA polish · Anaphora optimization · Enhanced RAG memory · Generate discard confirmation modal
 
 ### 🟡 Low Priority
-- `.pdf`/`.docx` import · MCP reference integration · Smart Bootstrap (Markdown import)
+- `.pdf`/`.docx` import · MCP reference integration · Smart Bootstrap (Markdown import) · Cascade-delete `generateHistory` on `deleteNovel`
 
 ### ⚫ Ideas Under Consideration
 - Narrative Continuity Engine v2 · EPUB/PDF export · Collaborative peer review · Pacing analysis
 
 ---
 
-## 8. Generate Tab — Resolved Design Decisions
-
-The following decisions have been finalized and should guide implementation:
-
-| # | Question | Decision |
-|---|---|---|
-| 1 | **Streaming format** | Stream **plain text per-word** into the preview panel. Convert to HTML on Accept. New `_callXxxStream()` methods needed in `aiService.js` per provider. |
-| 2 | **Context gathering** | New standalone utility **`services/contextGatherer.js`** — not a method on NovelContext. Walks the `acts[].chapters[].scenes[]` tree to collect ordered text. User selects from: `Previous X words (current scene)`, `Current scene (full)`, `Previous N scenes`, `Previous chapter`, `Entire novel`. |
-| 3 | **Cursor position tracking** | Managed at the **`Editor.jsx` view level** and passed down to the Generate tab. Not stored in AIContext. |
-| 4 | **Cancel mid-stream** | **Yes** — a "Stop" button is visible during streaming. Aborts the stream via `AbortController` and **keeps partial text** in the preview so the user can still Accept it. |
-| 5 | **Token estimation** | Simple **`words × 1.3`** heuristic. No external tokenizer dependency. Warning shown when estimate exceeds ~75k tokens. |
-
-### Implementation Checklist
-
-- [ ] **Database**: Add `generateHistory` table as Dexie **v15**:
-  ```
-  generateHistory: '++id, [novelId+sceneId], novelId, sceneId, createdAt'
-  ```
-- [ ] **Service**: Create `services/contextGatherer.js` with `gatherContext(acts, activeScene, scopeOption, params)` function
-- [ ] **Service**: Add `_callXxxStream()` methods to `aiService.js` for each provider (Gemini, OpenAI, Claude, OpenRouter, Local) returning a `ReadableStream` or async iterator
-- [ ] **Context**: Add Generate state to `AIContext.jsx` — `generateHistory[]`, `saveGeneration()`, `loadGenerationHistory()`, `deleteGeneration()` mutators
-- [ ] **View**: Track cursor position in `Editor.jsx` (via Tiptap `editor.state.selection`) and pass to AI panel
-- [ ] **Component**: Add Generate tab to `AIPanel.jsx` — prompt field, tone hint, word count input, scope selector, preview panel, Accept/Reject/Regenerate/Stop buttons, history log
-- [ ] **i18n**: Add keys to `ai` namespace (EN/ES): tab name, prompt placeholders, scope labels, warning messages, history UI strings
-- [ ] **Export**: Include `generateHistory` table in `.lwrt` export/import flow
-
----
-
-*This document reflects LoneWriter at **v1.9-nexus** (2026-05-03). Update with each major release.*
+*This document reflects LoneWriter at **v1.9-nexus** (reviewed 2026-05-12). Update with each major release.*
