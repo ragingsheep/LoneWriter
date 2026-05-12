@@ -89,4 +89,9 @@ db.version(14).stores({
   scenes: '++id, chapterId, title, order, status, pov, inGameDate'
 });
 
+// v15: Generate Tab — historial de generaciones por escena
+db.version(15).stores({
+  generateHistory: '++id, [novelId+sceneId], novelId, sceneId, createdAt'
+});
+
 export default db;

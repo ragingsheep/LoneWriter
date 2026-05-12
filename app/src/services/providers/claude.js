@@ -110,3 +110,64 @@ export async function callClaudeChat(systemPrompt, messages, apiKey, model) {
     throw error;
   }
 }
+
+/**
+ * Streaming single-turn completion for Generate tab.
+ * @param {string} prompt
+ * @param {string} apiKey
+ * @param {string} model
+ * @param {AbortSignal} signal
+ * @returns {AsyncGenerator<string>}
+ */
+export async function* callClaudeStream(prompt, apiKey, model, signal) {
+  const response = await fetch(CLAUDE_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: model || 'claude-3-haiku-20240307',
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: prompt }],
+      stream: true,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error?.message || 'Stream error with Claude API');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      const jsonStr = trimmed.slice(6);
+
+      try {
+        const data = JSON.parse(jsonStr);
+        if (data.type === 'content_block_delta') {
+          const text = data.delta?.text;
+          if (text) yield text;
+        }
+      } catch {
+        // skip
+      }
+    }
+  }
+}

@@ -63,7 +63,71 @@ export const AIProvider = ({ children }) => {
   const [selection, setSelection]     = useState('');
   const [lastRewrite, setLastRewrite] = useState('');
 
-  // ── Oracle ─────────────────────────────────────────────────────────────────
+  // ── Generate Tab ─────────────────────────────────────────────────────────────────
+  const [generateHistory, setGenerateHistory] = useState([]);
+
+  const loadGenerateHistory = useCallback(async () => {
+    if (!activeNovel || !activeScene) {
+      setGenerateHistory([]);
+      return;
+    }
+    const entries = await db.generateHistory
+      .where({ novelId: activeNovel.id, sceneId: activeScene.id })
+      .reverse()
+      .sortBy('createdAt');
+    setGenerateHistory(entries);
+  }, [activeNovel, activeScene]);
+
+  const saveGeneration = useCallback(async (record) => {
+    if (!activeNovel || !activeScene) return;
+    const entry = {
+      novelId: activeNovel.id,
+      sceneId: activeScene.id,
+      prompt: record.prompt || '',
+      toneHint: record.toneHint || '',
+      wordCountTarget: record.wordCountTarget || 0,
+      contextScope: record.contextScope || 'none',
+      contextDescription: record.contextDescription || '',
+      responseHtml: record.responseHtml || '',
+      responseText: record.responseText || '',
+      createdAt: new Date().toISOString(),
+    };
+    const id = await db.generateHistory.add(entry);
+    entry.id = id;
+    setGenerateHistory(prev => [entry, ...prev]);
+    return id;
+  }, [activeNovel, activeScene]);
+
+  const overwriteGeneration = useCallback(async (id, record) => {
+    if (!activeNovel || !activeScene) return;
+    const entry = {
+      novelId: activeNovel.id,
+      sceneId: activeScene.id,
+      prompt: record.prompt || '',
+      toneHint: record.toneHint || '',
+      wordCountTarget: record.wordCountTarget || 0,
+      contextScope: record.contextScope || 'none',
+      contextDescription: record.contextDescription || '',
+      responseHtml: record.responseHtml || '',
+      responseText: record.responseText || '',
+      createdAt: new Date().toISOString(),
+    };
+    await db.generateHistory.update(id, entry);
+    setGenerateHistory(prev => prev.map(e => e.id === id ? { ...e, ...entry } : e));
+  }, [activeNovel, activeScene]);
+
+  const deleteGeneration = useCallback(async (id) => {
+    await db.generateHistory.delete(id);
+    setGenerateHistory(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  // Load generate history when activeScene changes
+  useEffect(() => {
+    loadGenerateHistory();
+  }, [loadGenerateHistory]);
+
+
+  // ── Oraculo ─────────────────────────────────────────────────────────────────
   const [oracleText, setOracleText] = useState('');
   const [oracleHistory, setOracleHistory] = useState([]);
   const [oracleStatus, setOracleStatus] = useState({
@@ -489,6 +553,7 @@ export const AIProvider = ({ children }) => {
     switchDebateSession,
     renameDebateSession,
     deleteDebateSession,
+    generateHistory, loadGenerateHistory, saveGeneration, overwriteGeneration, deleteGeneration,
     testConnection: AIService.testConnection
   };
 

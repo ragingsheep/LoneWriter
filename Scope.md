@@ -144,7 +144,7 @@ LoneWriter/
 
 The AI panel has four tabs: **Generate** *(not yet implemented)*, **Rewrite**, **Debate**, and **Oracle**.
 
-#### 4.3.1 Generate Tab `[NOT YET IMPLEMENTED]`
+#### 4.3.1 Generate Tab `[IMPLEMENTATION IN PROGRESS]`
 
 The Generate tab produces **new** scene prose — distinct from Rewrite (which transforms existing text). It is a composition aid driven entirely by an explicit user prompt; it never writes autonomously.
 
@@ -173,10 +173,27 @@ The Generate tab produces **new** scene prose — distinct from Rewrite (which t
 - On Accept, plain text is **converted to HTML** (`<p>`, `<strong>`, `<em>`) before insertion — consistent with the rest of the app. This avoids parsing partial HTML during the stream.
 - Preview is **read-only during streaming**; Accept/Reject/Regenerate buttons disabled until complete
 - **Stop button** — visible during streaming; aborts the stream mid-generation and **keeps whatever text has been received so far** in the preview, allowing the author to Accept the partial result
+- **Accept Partial** button — visible during streaming alongside Stop; accepts whatever has been received so far without waiting for the stream to finish (Generate-only feature, not in Rewrite)
 - On completion (or Stop):
   - **Accept** — converts to HTML and inserts at the cursor position in the Tiptap editor
-  - **Reject / Discard** — clears preview, editor unchanged
+  - **Reject / Discard** — shows a **confirmation modal** (`openModal('confirm', ...)`) before clearing the preview — consistent with Rewrite's discard flow
   - **Regenerate** — re-runs the same prompt+context; replaces current preview
+
+*UI Pattern (Consistency with Rewrite Tab)*
+
+The Generate tab must follow the same UI conventions as the Rewrite tab:
+
+| Pattern | Rewrite | Generate (required) |
+|---|---|---|
+| **Error handling** | `openModal('confirm', ...)` branded modal | Same — no inline error banners for API errors |
+| **Empty scene guard** | Checks `!selection`, shows modal if empty | Must check `!activeScene`, show modal if no scene selected |
+| **Result header** | `Sparkles` icon + label + Copy button + Regenerate icon button | Same — result header must include Copy and Regenerate icon buttons |
+| **Result footer** | Shows goal/metadata tag (e.g. `⚡ Style`) | Must show scope + word count tag (e.g. `📝 Current scene · 500w`) |
+| **Discard confirmation** | `openModal('confirm', { isDanger: true, ... })` | Same — never silently discard a generated result |
+| **DOM IDs** | `id="rewrite-submit-btn"`, `id="rewrite-apply-btn"`, etc. | Must have `id="generate-submit-btn"`, `id="generate-apply-btn"`, `id="generate-discard-btn"`, `id="generate-stop-btn"`, `id="generate-copy-btn"` |
+| **Token usage logging** | Calls `logAIUsage(response.usage)` after every AI call | Same — must call `logAIUsage` after stream completes (or on Stop with partial result) |
+| **CSS class naming** | `rewrite-section`, `rewrite-result`, `rewrite-actions`, etc. | `generate-section`, `generate-result`, `generate-actions`, etc. (already correct) |
+| **Section label style** | `rewrite-section__label` — icon + uppercase 10px + 0.07em tracking | Same — already matched |
 
 *History & Persistence (Per Scene)*
 - Every generation saved to a new **`generateHistory`** IndexedDB table (`novelId + sceneId + createdAt`)

@@ -89,3 +89,61 @@ export async function callOpenAIChat(systemPrompt, messages, apiKey, model) {
     throw error;
   }
 }
+
+/**
+ * Streaming single-turn completion for Generate tab.
+ * @param {string} prompt
+ * @param {string} apiKey
+ * @param {string} model
+ * @param {AbortSignal} signal
+ * @returns {AsyncGenerator<string>}
+ */
+export async function* callOpenAIStream(prompt, apiKey, model, signal) {
+  const response = await fetch(OPENAI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: model || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      stream: true,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error?.message || 'Stream error with OpenAI API');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      const jsonStr = trimmed.slice(6);
+      if (jsonStr === '[DONE]') return;
+
+      try {
+        const data = JSON.parse(jsonStr);
+        const delta = data.choices?.[0]?.delta?.content;
+        if (delta) yield delta;
+      } catch {
+        // skip
+      }
+    }
+  }
+}

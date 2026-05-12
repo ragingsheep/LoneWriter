@@ -3,11 +3,11 @@
  * Handles communication with AI providers via specialized modules.
  */
 import i18n from '../i18n/i18n';
-import { callGemini, callGeminiChat } from './providers/gemini';
-import { callOpenAI, callOpenAIChat } from './providers/openai';
-import { callClaude, callClaudeChat } from './providers/claude';
-import { callOpenRouter, callOpenRouterChat } from './providers/openrouter';
-import { callLocal, callLocalChat } from './providers/local';
+import { callGemini, callGeminiChat, callGeminiStream } from './providers/gemini';
+import { callOpenAI, callOpenAIChat, callOpenAIStream } from './providers/openai';
+import { callClaude, callClaudeChat, callClaudeStream } from './providers/claude';
+import { callOpenRouter, callOpenRouterChat, callOpenRouterStream } from './providers/openrouter';
+import { callLocal, callLocalChat, callLocalStream } from './providers/local';
 
 export const AIService = {
   /**
@@ -557,5 +557,32 @@ ${type === 'lore' ? '- { "title": "...", "summary": "...", "category": "...", "t
       const latency = Date.now() - startTime;
       return { success: false, error: err.message || 'Error de conexión', latency };
     }
+  },
+
+  /**
+   * Streaming generation for the Generate tab.
+   * Returns an async generator that yields plain-text tokens.
+   * @param {string} prompt - Full prompt to send
+   * @param {object} config - { provider, apiKey, model, localBaseUrl }
+   * @param {AbortSignal} signal - For cancelling mid-stream
+   * @returns {AsyncGenerator<string>}
+   */
+  generateStream: async function* (prompt, config, signal) {
+    const { provider, apiKey, model, localBaseUrl } = config;
+    const isSpanish = i18n.language === 'es';
+
+    if (!apiKey && provider !== 'local') {
+      throw new Error(isSpanish ? 'Se requiere una clave API para usar la IA.' : 'An API key is required to use the AI.');
+    }
+
+    let generator;
+    if (provider === 'google') generator = callGeminiStream(prompt, apiKey, model, signal);
+    else if (provider === 'openai') generator = callOpenAIStream(prompt, apiKey, model, signal);
+    else if (provider === 'anthropic') generator = callClaudeStream(prompt, apiKey, model, signal);
+    else if (provider === 'openrouter') generator = callOpenRouterStream(prompt, apiKey, model, signal);
+    else if (provider === 'local') generator = callLocalStream(prompt, model, localBaseUrl, signal);
+    else throw new Error(isSpanish ? 'Proveedor de IA desconocido.' : 'Unknown AI provider.');
+
+    yield* generator;
   }
 };

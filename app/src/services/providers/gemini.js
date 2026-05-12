@@ -91,3 +91,61 @@ export async function callGeminiChat(systemPrompt, messages, apiKey, model) {
     throw error;
   }
 }
+
+/**
+ * Streaming single-turn completion for Generate tab.
+ * Returns an async generator that yields plain-text words as they arrive.
+ * @param {string} prompt
+ * @param {string} apiKey
+ * @param {string} model
+ * @param {AbortSignal} signal
+ * @returns {AsyncGenerator<string>}
+ */
+export async function* callGeminiStream(prompt, apiKey, model, signal) {
+  const url = `${GEMINI_API_BASE}/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+      },
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error?.message || 'Stream error with Gemini API');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      const jsonStr = trimmed.slice(6);
+      if (jsonStr === '[DONE]') return;
+
+      try {
+        const data = JSON.parse(jsonStr);
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) yield text;
+      } catch {
+        // skip unparseable chunks
+      }
+    }
+  }
+}

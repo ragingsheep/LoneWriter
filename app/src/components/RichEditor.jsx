@@ -145,7 +145,11 @@ export default function RichEditor({ content, onChange, placeholder }) {
       }
     };
     window.addEventListener('ai-apply-rewrite', handleApply);
-    return () => window.removeEventListener('ai-apply-rewrite', handleApply);
+    window.addEventListener('ai-apply-generate', handleApply);
+    return () => {
+      window.removeEventListener('ai-apply-rewrite', handleApply);
+      window.removeEventListener('ai-apply-generate', handleApply);
+    };
   }, [editor]);
 
   if (!editor) {

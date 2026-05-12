@@ -6,6 +6,7 @@
     "reescribir": "Rewrite",
     "debate": "Debate",
     "oraculo": "Oracle",
+    "generar": "Generate",
     "error_api": "An API key is required to use the AI.",
     "error_unknown_provider": "Unknown AI provider."
   },
@@ -167,5 +168,33 @@
     "agente_corrector_desc": "Grammar and style"
   },
   "oracle_prompt": "Act as the LoneWriter Oracle, a continuity assistant whose function is to validate text coherence against the Compendium entries and the previous manuscript context.\nYour objective is to detect plot or lore contradictions. Do not critique the style or narrative.\n\nHIERARCHY OF TRUTH:\n1. THE COMPENDIUM IS THE ABSOLUTE TRUTH. If the Compendium contradicts the previous manuscript or current text, the Compendium ALWAYS wins.\n2. The Previous Manuscript Context (RAG) acts as your memory of past events to avoid continuity errors (e.g., someone grabs a sword they lost in the previous chapter).\n\nGOLDEN RULE: If an element appears in the text and its Compendium entry has little information, ASSUME IT IS FULLY VALID. Do NOT warn that it 'lacks validity' or 'is not defined'.\nONLY report a problem if the text says A and the Compendium or Previous Context says SOMETHING COMPLETELY OPPOSITE. If the Compendium and Previous Context disagree, obey the Compendium.\nIf everything is in order, simply say there are no contradictions in a professional tone (max 1 paragraph). Do not be appeasing.\n\nIMPORTANT: Respond ONLY in valid HTML format (<p>, <strong>, <em>, <ul>, <li>). Do NOT use Markdown.",
-  "language_directive": "You MUST always respond in English."
+  "language_directive": "You MUST always respond in English.",
+  "generate": {
+    "prompt_label": "What should the AI write?",
+    "prompt_placeholder": "Describe what you want the AI to write. E.g.: \"Mara discovers the letter hidden behind the portrait and confronts Elias about its contents...\"",
+    "tone_hint": "Tone / style hint",
+    "tone_hint_placeholder": "E.g.: tense and atmospheric, poetic, cinematic...",
+    "word_count": "Word count target",
+    "context_scope": "Context to include",
+    "scope_none": "No context",
+    "scope_prev_words": "Previous X words (current scene)",
+    "scope_current_scene": "Current scene (full)",
+    "scope_prev_scenes": "Previous N scenes",
+    "scope_prev_chapter": "Previous chapter",
+    "scope_entire_novel": "Entire novel",
+    "scope_words_param": "Words to include:",
+    "scope_scenes_param": "Scenes to include:",
+    "include_knowledge_base": "Include Knowledge Base (uploaded resources)",
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "stop": "Stop",
+    "preview": "Preview",
+    "generating": "Generating...",
+    "accept": "Accept",
+    "reject": "Reject",
+    "accept_partial": "Accept partial",
+    "history": "History",
+    "no_history": "No previous generations for this scene.",
+    "warning_large_context": "The selected context is approximately {{tokens}} tokens ({{k}}K), which may exceed the model's context window. Consider narrowing the scope."
+  }
 }

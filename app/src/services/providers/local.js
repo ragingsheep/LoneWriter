@@ -98,3 +98,59 @@ export async function callLocalChat(systemPrompt, messages, model, baseUrl) {
     throw error;
   }
 }
+
+/**
+ * Streaming single-turn completion for Generate tab.
+ * @param {string} prompt
+ * @param {string} model
+ * @param {string} baseUrl
+ * @param {AbortSignal} signal
+ * @returns {AsyncGenerator<string>}
+ */
+export async function* callLocalStream(prompt, model, baseUrl, signal) {
+  const url = buildUrl(baseUrl);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: model || 'local-model',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      stream: true,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.error?.message || `Stream error ${response.status} from local server`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+      const jsonStr = trimmed.slice(6);
+      if (jsonStr === '[DONE]') return;
+
+      try {
+        const data = JSON.parse(jsonStr);
+        const delta = data.choices?.[0]?.delta?.content;
+        if (delta) yield delta;
+      } catch {
+        // skip
+      }
+    }
+  }
+}

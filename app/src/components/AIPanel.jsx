@@ -4,10 +4,11 @@
  */
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Sparkles, X, Wand2, MessageSquare, Eye, Key } from 'lucide-react'
+import { Sparkles, X, Wand2, MessageSquare, Eye, Key, PenLine } from 'lucide-react'
 import { useAI } from '../context/AIContext'
 import { Tooltip } from './Tooltip'
 import { RewriteTab } from './aipanel/RewriteTab'
+import { GenerateTab } from './aipanel/GenerateTab'
 import DebateTab from './aipanel/DebateTab'
 import OracleTab from './aipanel/OracleTab'
 import './AIPanel.css'
@@ -97,6 +98,14 @@ export default function AIPanel({ open, onClose, activeScene, defaultTab = 'rewr
         {/* Tabs */}
         <div className="ai-panel__tabs">
           <button
+            id="ai-tab-generate"
+            className={`ai-panel__tab ${activeTab === 'generate' ? 'ai-panel__tab--active' : ''}`}
+            onClick={() => setActiveTab('generate')}
+          >
+            <PenLine size={13} />
+            {t('tabs.generar')}
+          </button>
+          <button
             id="ai-tab-rewrite"
             className={`ai-panel__tab ${activeTab === 'rewrite' ? 'ai-panel__tab--active' : ''}`}
             onClick={() => setActiveTab('rewrite')}
@@ -124,6 +133,7 @@ export default function AIPanel({ open, onClose, activeScene, defaultTab = 'rewr
 
         {/* Tab content */}
         <div className="ai-panel__content">
+          {activeTab === 'generate' && <GenerateTab activeScene={activeScene} />}
           {activeTab === 'rewrite' && <RewriteTab activeScene={activeScene} />}
           {activeTab === 'debate' && <DebateTab activeScene={activeScene} />}
           {activeTab === 'oracle' && <OracleTab activeScene={activeScene} />}
