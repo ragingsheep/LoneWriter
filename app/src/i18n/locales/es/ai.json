@@ -195,6 +195,9 @@
     "accept_partial": "Aceptar parcial",
     "history": "Historial",
     "no_history": "No hay generaciones anteriores para esta escena.",
-    "warning_large_context": "El contexto seleccionado tiene aproximadamente {{tokens}} tokens ({{k}}K), lo que podría exceder la ventana de contexto del modelo. Considera reducir el alcance."
+    "warning_large_context": "El contexto seleccionado tiene aproximadamente {{tokens}} tokens ({{k}}K), lo que podría exceder la ventana de contexto del modelo. Considera reducir el alcance.",
+    "discard_title": "Descartar generación",
+    "discard_message": "Este texto generado se descartará permanentemente. ¿Continuar?",
+    "discard_confirm": "Descartar"
   }
 }

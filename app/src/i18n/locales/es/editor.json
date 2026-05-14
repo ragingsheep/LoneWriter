@@ -109,5 +109,28 @@
   "fecha_ok": "OK",
   "exportar": {
     "escena_vacia_word": "La escena está vacía. Escribe algo antes de exportar."
+  },
+  "story": {
+    "title": "Configuración de la Historia",
+    "saved": "Guardado",
+    "no_novel": "No hay novela seleccionada. Crea o abre una novela primero.",
+    "prose": "Prosa",
+    "tense": "Tiempo Narrativo",
+    "tense_desc": "Define el tiempo verbal por defecto para la prosa generada por IA. Las escenas individuales pueden anularlo.",
+    "tense_past": "Pasado",
+    "tense_present": "Presente",
+    "language": "Idioma",
+    "language_desc": "El idioma o dialecto para corrección ortográfica y salida de IA. Ej.: Español, Inglés general, Español rioplatense.",
+    "language_placeholder": "ej. Español",
+    "pov_type": "Tipo de POV por Defecto",
+    "pov_type_desc": "Cada escena hereda este POV por defecto. Puedes cambiar el POV por escena en el editor sin afectar esta configuración.",
+    "pov_1st": "1ª Persona",
+    "pov_2nd": "2ª Persona",
+    "pov_3rd": "3ª Persona",
+    "pov_3rd_limited": "3ª Persona (Limitada)",
+    "pov_3rd_omniscient": "3ª Persona (Omnisciente)",
+    "pov_character": "Personaje POV por Defecto",
+    "pov_character_desc": "El personaje desde cuya perspectiva se narra. Se usa cuando el Tipo de POV es 1ª Persona o 3ª Persona (Limitada). Puede anularse por escena.",
+    "pov_character_placeholder": "ej. Elena Voss"
   }
 }

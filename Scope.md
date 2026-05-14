@@ -96,7 +96,7 @@ LoneWriter/
 | `ai-apply-generate` | → Editor (RichEditor) | Insert generated HTML at cursor position |
 | `mpc-manual-scan` | → EditorView | Trigger a manual MPC analysis run |
 
-### 3.4 Database Schema (Dexie v15 — 22 tables; v16 planned — 23 tables)
+### 3.4 Database Schema (Dexie v16 — 23 tables)
 
 | Table | Purpose |
 |---|---|
@@ -122,7 +122,7 @@ LoneWriter/
 | `editorPrefs` | Editor visual preferences |
 | `nexusLinks` | Manual relationship links for Nexus graph |
 | `generateHistory` | AI Generate tab history per scene (v15) |
-| `novelSettings` | Per-novel prose settings (tense, language, POV) — **planned v16** |
+| `novelSettings` | Per-novel prose settings (tense, language, POV) — **v16** |
 
 ---
 
@@ -272,6 +272,115 @@ The Generate tab produces **new** scene prose — distinct from Rewrite (which t
 
 ---
 
+#### 4.3.5 Custom AI Prompt Settings `[NOT YET IMPLEMENTED]`
+
+LoneWriter will allow authors to customize the prompts sent to each AI Assistant tab while keeping the default prompts available as safe fallbacks. Prompt customization is a power-user feature: it must expose enough control for advanced authors without making the default writing workflow harder for casual users.
+
+The prompt model should follow standard AI message-role concepts, inspired by systems such as Novelcrafter's AI message roles:
+
+| Role | Purpose |
+|---|---|
+| `system` | Defines the assistant's job, constraints, tone, safety boundaries, and output format. Some providers may not support native system messages; in that case LoneWriter may merge the system message into the first user message while preserving semantics. |
+| `user` | Contains the author's request, selected text, scene context, Compendium context, Knowledge Base excerpts, and generated variable values. |
+| `assistant` | Optional prefill text used to steer the model's opening response or expected format. This is not shown as generated output unless returned by the provider. |
+
+**Per-tab settings:**
+
+| Tab | Required customizable prompt setting | Notes |
+|---|---|---|
+| **Generate** | One editable prompt profile for prose generation | Must support role-separated messages for creative-writing instructions, context placement, user request, output-only constraints, and optional assistant prefill. |
+| **Rewrite** | One editable prompt profile per rewrite goal, plus a shared fallback profile | Goals include Style, Language, Tone, Length, Clarity, Rhythm, Cohesion, and Character. Each goal may override the shared rewrite prompt. |
+| **Debate** | One editable global debate prompt profile, plus editable participant/agent prompts | The global profile controls transcript framing, role discipline, context injection, and response format. Existing custom agent prompts remain separate but should use the same variable system. |
+| **Oracle** | One editable continuity-check prompt profile | Must preserve Oracle's lore-only contract by default: continuity and Compendium conflicts only, not grammar, style, or taste critique. |
+
+**Prompt profile structure:**
+
+- Each profile consists of one or more ordered message blocks.
+- Each block has `role`, `label`, `content`, `enabled`, and `order`.
+- Supported roles are `system`, `user`, and `assistant`.
+- A profile may define model parameters separately from message content where providers support them: `temperature`, `maxOutputTokens`, `topP`, `frequencyPenalty`, `presencePenalty`.
+- Profiles have `scope`: `global`, `novel`, or `tab`. Novel-scoped profiles override global defaults only for the active novel.
+- Profiles must include a reset action that restores the shipped LoneWriter default for that tab or rewrite goal.
+
+**Variable interpolation:**
+
+Prompt customization must support braced dot-path variables. Variables are inserted immediately before the provider request is sent. Missing values resolve to an empty string unless a required-variable validation rule marks them as blocking.
+
+| Variable | Source | Example value |
+|---|---|---|
+| `{app.language}` | Current UI language | `en` |
+| `{novel.title}` | Active novel | `The Glass Orchard` |
+| `{novel.author}` | Active novel | `Sergio Sanchez` |
+| `{novel.status}` | Active novel | `Draft` |
+| `{novel.target_words}` | Active novel | `100000` |
+| `{novel.tense}` | Story Settings | `past` |
+| `{novel.language}` | Story Settings | `British English` |
+| `{novel.pov_type}` | Story Settings | `3rd_limited` |
+| `{novel.pov_character}` | Story Settings | `Elena Voss` |
+| `{scene.title}` | Active scene | `The locked observatory` |
+| `{scene.pov}` | Active scene | `Elena Voss` |
+| `{scene.status}` | Active scene | `Draft` |
+| `{scene.date}` | Active scene | `1894-10-03` |
+| `{scene.synopsis}` | Active scene | `Elena finds the hidden letter.` |
+| `{selection.text}` | Rewrite selection | Selected plain text |
+| `{author.request}` | Generate prompt or Debate user input | User's typed instruction |
+| `{rewrite.goal}` | Rewrite tab | `tone` |
+| `{rewrite.instruction}` | Rewrite tab | User's custom rewrite instruction |
+| `{context.previous}` | Context gatherer | Prior text selected by scope |
+| `{context.compendium}` | AI context builder | Relevant Compendium entries |
+| `{context.knowledge_base}` | Resources | Active reference files |
+| `{context.rag}` | RAG service | Retrieved manuscript memories |
+| `{oracle.paragraph}` | Oracle tab | Paragraph being checked |
+| `{debate.transcript}` | Debate tab | Prior debate messages |
+| `{debate.agent_name}` | Debate participant | `Editor` |
+| `{debate.agent_prompt}` | Debate participant | Agent-specific system prompt |
+
+**Variable requirements:**
+
+- Story Settings variables use `novel.*` names, not implementation field names, so prompt text remains stable if internal state changes.
+- Scene-level POV variables should resolve to the scene override when present, otherwise fall back to Story Settings defaults.
+- Context variables should only contain data already available to the current tab and user-selected context options.
+- Variables that may contain large text, such as `{context.knowledge_base}`, `{context.rag}`, and `{debate.transcript}`, must show estimated token impact before sending when feasible.
+- Literal braces can be escaped as `{{` and `}}`.
+
+**UI requirements:**
+
+- Prompt customization lives in Settings > Artificial Intelligence, with sub-sections for Generate, Rewrite, Debate, and Oracle.
+- Each tab shows its effective prompt as ordered message blocks, not as one opaque textarea.
+- Users can add, disable, delete, duplicate, and reorder message blocks.
+- Users can insert variables from a searchable variable picker.
+- A read-only preview shows the final interpolated prompt/messages for the active scene before saving or testing.
+- The UI warns when a provider does not support a native message role and explains how LoneWriter will adapt it.
+- Reset to default is available per block, per profile, and per tab.
+
+**Provider behavior:**
+
+- Providers with chat-role APIs receive message blocks as native role messages where possible.
+- Providers without native system-message support receive a semantically equivalent merged prompt.
+- Local providers should receive OpenAI-compatible message arrays when using an OpenAI-compatible endpoint, otherwise a flattened prompt.
+- Assistant prefill is optional and must be omitted for providers that do not support it cleanly.
+
+**Reliability and safety:**
+
+- Invalid profiles must not block normal AI use; LoneWriter falls back to the shipped default prompt and shows a clear warning.
+- Prompt edits are saved locally only and included in `.lwrt` export if they are novel-scoped.
+- Global/device prompt edits are excluded from `.lwrt` export unless explicitly marked as novel-scoped.
+- No API keys, provider credentials, or secrets may be inserted through variables.
+- Defaults must remain privacy-first and must not send data outside the context selected by the user.
+
+**Planned data model:**
+
+- Add a future Dexie table, tentatively `promptProfiles`, keyed by `++id, scope, novelId, tab, goal, updatedAt`.
+- Fields: `id`, `scope`, `novelId`, `tab`, `goal`, `name`, `messages`, `parameters`, `isDefault`, `updatedAt`.
+- `messages` is an ordered array of `{ role, label, content, enabled, order }`.
+- Global/device-only profiles are not exported by default. Novel-scoped profiles are exported with the novel.
+
+**Out of scope (this iteration):**
+
+- Prompt marketplace or sharing gallery · Cloud-hosted prompt library · Prompt A/B testing · Automatic prompt optimization · Fine-tuning · Server-side prompt storage
+
+---
+
 ### 4.4 RAG Engine (Local Semantic Search)
 
 **In scope:**
@@ -417,7 +526,7 @@ The Generate tab produces **new** scene prose — distinct from Rewrite (which t
 
 ---
 
-### 4.14 Story Settings `[NOT YET IMPLEMENTED]`
+### 4.14 Story Settings ✅ `[IMPLEMENTED]`
 
 A new top-level panel (alongside Editor, Compendium, Nexus, Resources) that holds **novel-level prose configuration**. These settings are stored per novel and injected into AI prompts at generation time. The exact prompt injection strategy is deferred to a later implementation phase — this scope covers the data model and UI only.
 
@@ -477,25 +586,22 @@ A new top-level panel (alongside Editor, Compendium, Nexus, Resources) that hold
 |---|---|
 | No cross-device sync without Google Drive | Data is device-local by default |
 | Full database export only | No per-novel selective export |
-| `generateHistory` not deleted on `deleteNovel` | Minor gap — orphan records remain in DB |
 | RAG limited to small model | `all-MiniLM-L6-v2`; larger models on roadmap |
 | Oracle per-scene only | No project-wide batch analysis |
 | MPC active on current scene only | Past scenes not retroactively scanned |
 | MPC disabled by default | Must be enabled per device in the AI panel |
 | No Nexus graph search/filter | Large graphs hard to navigate |
 | Claude CORS | Requires `anthropic-dangerous-direct-browser-access` header |
-| Generate discard is silent | No confirmation modal before clearing a generated result |
 
 ---
 
 ## 7. Roadmap Summary
 
 ### 🟢 High Priority
-- **Story Settings panel** (§4.14) — Dexie v16 table, view, NovelContext integration
-- Mobile PWA polish · Anaphora optimization · Enhanced RAG memory · Generate discard confirmation modal
+- Custom AI prompt settings (§4.3.5) · Mobile PWA polish · Anaphora optimization · Enhanced RAG memory
 
 ### 🟡 Low Priority
-- `.pdf`/`.docx` import · MCP reference integration · Smart Bootstrap (Markdown import) · Cascade-delete `generateHistory` on `deleteNovel`
+- `.pdf`/`.docx` import · MCP reference integration · Smart Bootstrap (Markdown import)
 
 ### ⚫ Ideas Under Consideration
 - Narrative Continuity Engine v2 · EPUB/PDF export · Collaborative peer review · Pacing analysis

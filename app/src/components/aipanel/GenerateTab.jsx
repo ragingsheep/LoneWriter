@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useAI } from '../../context/AIContext'
 import { useNovel } from '../../context/NovelContext'
+import { useModal } from '../../context/ModalContext'
 import { AIService } from '../../services/aiService'
 import { gatherContext, SCOPE_OPTIONS, estimateTokens } from '../../services/contextGatherer'
 import { Tooltip } from '../Tooltip'
@@ -38,6 +39,7 @@ export function GenerateTab({ activeScene }) {
     loadGenerateHistory, logAIUsage
   } = useAI()
   const { acts, activeNovel, characters, resources } = useNovel()
+  const { openModal } = useModal()
 
   const [prompt, setPrompt] = useState('')
   const [toneHint, setToneHint] = useState('')
@@ -201,9 +203,17 @@ export function GenerateTab({ activeScene }) {
   const handleAcceptPartial = () => commitGeneration(previewText)
 
   const handleReject = () => {
-    setPreviewText('')
-    setIsComplete(false)
-    setEditingFromHistory(null)
+    openModal('confirm', {
+      title: t('generate.discard_title'),
+      message: t('generate.discard_message'),
+      isDanger: true,
+      confirmLabel: t('generate.discard_confirm'),
+      onConfirm: () => {
+        setPreviewText('')
+        setIsComplete(false)
+        setEditingFromHistory(null)
+      },
+    })
   }
 
   const handleRegenerate = async () => {

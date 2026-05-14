@@ -109,5 +109,28 @@
   "fecha_ok": "OK",
   "exportar": {
     "escena_vacia_word": "The scene is empty. Write something before exporting."
+  },
+  "story": {
+    "title": "Story Settings",
+    "saved": "Saved",
+    "no_novel": "No novel selected. Create or open a novel first.",
+    "prose": "Prose",
+    "tense": "Narrative Tense",
+    "tense_desc": "Sets the default tense for AI-generated prose. Individual scenes can override this.",
+    "tense_past": "Past",
+    "tense_present": "Present",
+    "language": "Language",
+    "language_desc": "The language or dialect for spell-checking and AI output. E.g.: General English, British English, Español.",
+    "language_placeholder": "e.g. General English",
+    "pov_type": "Default POV Type",
+    "pov_type_desc": "Each scene inherits this POV by default. You can change the POV per scene in the editor without affecting this setting.",
+    "pov_1st": "1st Person",
+    "pov_2nd": "2nd Person",
+    "pov_3rd": "3rd Person",
+    "pov_3rd_limited": "3rd Person (Limited)",
+    "pov_3rd_omniscient": "3rd Person (Omniscient)",
+    "pov_character": "Default POV Character",
+    "pov_character_desc": "The character whose perspective drives the narration. Used when POV Type is 1st Person or 3rd Person (Limited). Can be overridden per scene.",
+    "pov_character_placeholder": "e.g. Elena Voss"
   }
 }

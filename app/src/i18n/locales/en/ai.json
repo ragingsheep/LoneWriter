@@ -195,6 +195,9 @@
     "accept_partial": "Accept partial",
     "history": "History",
     "no_history": "No previous generations for this scene.",
-    "warning_large_context": "The selected context is approximately {{tokens}} tokens ({{k}}K), which may exceed the model's context window. Consider narrowing the scope."
+    "warning_large_context": "The selected context is approximately {{tokens}} tokens ({{k}}K), which may exceed the model's context window. Consider narrowing the scope.",
+    "discard_title": "Discard generation",
+    "discard_message": "This generated text will be permanently discarded. Continue?",
+    "discard_confirm": "Discard"
   }
 }

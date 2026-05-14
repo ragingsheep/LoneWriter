@@ -1,4 +1,4 @@
-import { BookOpen, BookMarked, FolderOpen, PenLine, ChevronLeft, ChevronRight, Network } from 'lucide-react'
+import { BookOpen, BookMarked, FolderOpen, PenLine, ChevronLeft, ChevronRight, Network, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNovel } from '../context/NovelContext'
 import { Tooltip } from './Tooltip'
@@ -10,6 +10,12 @@ export default function Sidebar({ active, onNavigate, collapsed, onToggle }) {
   const { activeNovel } = useNovel()
 
   const NAV = [
+    {
+      id: 'story-settings',
+      label: t('sidebar.nav.story_settings_label'),
+      sublabel: t('sidebar.nav.story_settings_sublabel'),
+      icon: Settings,
+    },
     {
       id: 'editor',
       label: t('sidebar.nav.editor_label'),

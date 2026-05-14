@@ -43,8 +43,10 @@
     "colapsar": "Colapsar menú",
     "novela_activa": "Novela activa",
     "version": "LoneWriter",
-    "nav": {
-      "editor_label": "Estructura narrativa",
+      "nav": {
+        "story_settings_label": "Configuración",
+        "story_settings_sublabel": "Tiempo, idioma y POV",
+        "editor_label": "Estructura narrativa",
       "editor_sublabel": "Actos, capítulos y escenas",
       "compendium_label": "Compendio",
       "compendium_sublabel": "Personajes, lore y mundo",

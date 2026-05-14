@@ -43,8 +43,10 @@
     "colapsar": "Collapse menu",
     "novela_activa": "Active novel",
     "version": "LoneWriter",
-    "nav": {
-      "editor_label": "Narrative structure",
+      "nav": {
+        "story_settings_label": "Story Settings",
+        "story_settings_sublabel": "Tense, language and POV",
+        "editor_label": "Narrative structure",
       "editor_sublabel": "Acts, chapters and scenes",
       "compendium_label": "Compendium",
       "compendium_sublabel": "Characters, lore and world",

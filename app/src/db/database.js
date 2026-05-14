@@ -94,4 +94,9 @@ db.version(15).stores({
   generateHistory: '++id, [novelId+sceneId], novelId, sceneId, createdAt'
 });
 
+// v16: Story Settings — per-novel prose configuration (tense, language, POV)
+db.version(16).stores({
+  novelSettings: 'novelId'
+});
+
 export default db;

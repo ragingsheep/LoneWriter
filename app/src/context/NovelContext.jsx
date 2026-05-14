@@ -19,6 +19,7 @@ export const NovelProvider = ({ children }) => {
   const [lore, setLore] = useState([]);
   const [resources, setResources] = useState([]);
   const [nexusLinks, setNexusLinks] = useState([]);
+  const [novelSettings, setNovelSettings] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const { isCloudSyncEnabled, cloudSyncStatus, lastCloudSync, setPendingSync,
@@ -136,6 +137,7 @@ export const NovelProvider = ({ children }) => {
     setLore(await db.lore.where('novelId').equals(novelId).toArray());
     setResources(await db.resources.where('novelId').equals(novelId).toArray());
     setNexusLinks(await db.nexusLinks.where('novelId').equals(novelId).toArray());
+    setNovelSettings(await db.novelSettings.get(novelId));
     
     // Load UI state
     const savedExpanded = await getNovelUIExpanded(novelId);
@@ -204,6 +206,21 @@ export const NovelProvider = ({ children }) => {
     if (activeNovel?.id === novelId) {
       setActiveNovel(prev => ({ ...prev, ...cleanData }));
     }
+    setPendingSync(true);
+  };
+
+  const updateNovelSettings = async (novelId, patch) => {
+    const existing = await db.novelSettings.get(novelId);
+    const entry = {
+      novelId,
+      tense: patch.tense ?? existing?.tense ?? 'past',
+      language: patch.language ?? existing?.language ?? '',
+      povType: patch.povType ?? existing?.povType ?? '3rd',
+      povCharacter: patch.povCharacter ?? existing?.povCharacter ?? '',
+      updatedAt: new Date().toISOString(),
+    };
+    await db.novelSettings.put(entry);
+    setNovelSettings(entry);
     setPendingSync(true);
   };
 
@@ -297,7 +314,8 @@ export const NovelProvider = ({ children }) => {
       db.novels, db.acts, db.chapters, db.scenes,
       db.characters, db.locations, db.objects, db.lore,
       db.resources, db.dailyProgress, db.debateAgents, db.debateSessions,
-      db.oracleEntries, db.lastRewrite, db.mpcIgnored, db.nexusLinks
+      db.oracleEntries, db.lastRewrite, db.mpcIgnored, db.nexusLinks,
+      db.generateHistory, db.novelSettings
     ], async () => {
       // Delete narrative structure
       const actsToDelete = await db.acts.where('novelId').equals(id).toArray();
@@ -324,6 +342,8 @@ export const NovelProvider = ({ children }) => {
       await db.oracleEntries.where('novelId').equals(id).delete();
       await db.lastRewrite.where('novelId').equals(id).delete();
       await db.mpcIgnored.where('novelId').equals(id).delete();
+      await db.generateHistory.where('novelId').equals(id).delete();
+      await db.novelSettings.delete(id);
       // Delete the novel itself
       await db.novels.delete(id);
     });
@@ -333,6 +353,7 @@ export const NovelProvider = ({ children }) => {
     if (activeNovel?.id === id) {
       setActiveNovel(null);
       setActiveScene(null);
+      setNovelSettings(null);
     }
     setPendingSync(true);
   };
@@ -534,6 +555,7 @@ export const NovelProvider = ({ children }) => {
     lore,
     resources,
     nexusLinks,
+    novelSettings,
     loading,
     createNovel,
     switchNovel,
@@ -554,6 +576,7 @@ export const NovelProvider = ({ children }) => {
     moveChapter,
     updateNovelTarget,
     updateNovel,
+    updateNovelSettings,
     getNovelUIExpanded,
     updateNovelUIExpanded,
     getStreak,
