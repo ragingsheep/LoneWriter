@@ -96,7 +96,7 @@ LoneWriter/
 | `ai-apply-generate` | → Editor (RichEditor) | Insert generated HTML at cursor position |
 | `mpc-manual-scan` | → EditorView | Trigger a manual MPC analysis run |
 
-### 3.4 Database Schema (Dexie v16 — 23 tables)
+### 3.4 Database Schema (Dexie v17 — 24 tables)
 
 | Table | Purpose |
 |---|---|
@@ -123,6 +123,7 @@ LoneWriter/
 | `nexusLinks` | Manual relationship links for Nexus graph |
 | `generateHistory` | AI Generate tab history per scene (v15) |
 | `novelSettings` | Per-novel prose settings (tense, language, POV) — **v16** |
+| `promptProfiles` | Custom AI prompt profiles with role-based message blocks — **v17** |
 
 ---
 
@@ -272,7 +273,7 @@ The Generate tab produces **new** scene prose — distinct from Rewrite (which t
 
 ---
 
-#### 4.3.5 Custom AI Prompt Settings `[NOT YET IMPLEMENTED]`
+#### 4.3.5 Custom AI Prompt Settings ✅ `[IMPLEMENTED]`
 
 LoneWriter will allow authors to customize the prompts sent to each AI Assistant tab while keeping the default prompts available as safe fallbacks. Prompt customization is a power-user feature: it must expose enough control for advanced authors without making the default writing workflow harder for casual users.
 
@@ -368,9 +369,9 @@ Prompt customization must support braced dot-path variables. Variables are inser
 - No API keys, provider credentials, or secrets may be inserted through variables.
 - Defaults must remain privacy-first and must not send data outside the context selected by the user.
 
-**Planned data model:**
+**Data model:**
 
-- Add a future Dexie table, tentatively `promptProfiles`, keyed by `++id, scope, novelId, tab, goal, updatedAt`.
+- Dexie v17 table `promptProfiles`, keyed by `++id, [scope+novelId+tab+goal], scope, novelId, tab, goal, updatedAt`.
 - Fields: `id`, `scope`, `novelId`, `tab`, `goal`, `name`, `messages`, `parameters`, `isDefault`, `updatedAt`.
 - `messages` is an ordered array of `{ role, label, content, enabled, order }`.
 - Global/device-only profiles are not exported by default. Novel-scoped profiles are exported with the novel.
@@ -451,7 +452,7 @@ Prompt customization must support braced dot-path variables. Variables are inser
 - **`.lwrt` import**: auto-detects encrypted / plain / legacy JSON; re-prompts on wrong password
 - **Scene `.docx`** export (single scene)
 - **Full novel `.docx`** manuscript export (title page, page breaks, page numbers)
-- Device-only settings (`editorPrefs`, `customStopwords`) excluded from export
+- Device-only settings (`editorPrefs`, `customStopwords`, global `promptProfiles`) excluded from export
 
 **Out of scope:**
 - EPUB/PDF export · `.docx`/`.pdf` import · Selective per-novel export
@@ -598,7 +599,7 @@ A new top-level panel (alongside Editor, Compendium, Nexus, Resources) that hold
 ## 7. Roadmap Summary
 
 ### 🟢 High Priority
-- Custom AI prompt settings (§4.3.5) · Mobile PWA polish · Anaphora optimization · Enhanced RAG memory
+- Mobile PWA polish · Anaphora optimization · Enhanced RAG memory
 
 ### 🟡 Low Priority
 - `.pdf`/`.docx` import · MCP reference integration · Smart Bootstrap (Markdown import)

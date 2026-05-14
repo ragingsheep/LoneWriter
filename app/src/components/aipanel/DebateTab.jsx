@@ -18,6 +18,7 @@ import { retrieveRelevantFragments } from '../../services/ragService'
 import { Tooltip } from '../Tooltip'
 import { renderMarkdown } from '../../utils/renderMarkdown'
 import { normalizeTextForDisplay } from './aiPanelHelpers'
+import { buildBasePromptVariables, renderPromptMessages } from '../../services/promptProfiles'
 
 function DebateTab({ activeScene }) {
   const { t } = useTranslation('ai')
@@ -27,9 +28,9 @@ function DebateTab({ activeScene }) {
     addDebateMessage, clearDebateHistory,
     toggleDebateAgent, updateDebateAgent, addDebateAgent, removeDebateAgent,
     debateSessions, activeSessionId, switchDebateSession, renameDebateSession, deleteDebateSession, addDebateSession,
-    logAIUsage
+    logAIUsage, getPromptProfile
   } = useAI()
-  const { resources, activeNovel, acts } = useNovel()
+  const { resources, activeNovel, novelSettings, acts } = useNovel()
   const { openModal } = useModal()
 
   const [input, setInput] = useState('')
@@ -164,7 +165,18 @@ function DebateTab({ activeScene }) {
           const response = await AIService.agentChat(agent, historyWithUser, {
             provider, apiKey, model: currentModel, localBaseUrl, sceneContent, pov, roundInstruction, knowledgeBase,
             compendiumContext: compendiumInfo || null,
-            ragContext: ragInfo || null
+            ragContext: ragInfo || null,
+            renderedPromptMessages: renderPromptMessages(getPromptProfile('debate', 'global'), {
+              ...buildBasePromptVariables({ activeNovel, novelSettings, activeScene }),
+              'scene.content': sceneContent || '',
+              'context.compendium': compendiumInfo || '',
+              'context.knowledge_base': knowledgeBase || '',
+              'context.rag': ragInfo || '',
+              'debate.transcript': historyWithUser.map(msg => `${msg.agentName || (msg.role === 'user' ? 'Author' : msg.agent || 'Participant')}: ${msg.text}`).join('\n'),
+              'debate.agent_name': agent.name,
+              'debate.agent_prompt': agent.systemPrompt || '',
+              'debate.round_instruction': roundInstruction,
+            })
           })
 
           logAIUsage(response.usage);

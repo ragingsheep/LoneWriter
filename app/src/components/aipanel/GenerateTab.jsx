@@ -11,6 +11,7 @@ import { useNovel } from '../../context/NovelContext'
 import { useModal } from '../../context/ModalContext'
 import { AIService } from '../../services/aiService'
 import { gatherContext, SCOPE_OPTIONS, estimateTokens } from '../../services/contextGatherer'
+import { buildBasePromptVariables, flattenPromptMessages, renderPromptMessages } from '../../services/promptProfiles'
 import { Tooltip } from '../Tooltip'
 
 const SCOPE_LABELS = {
@@ -36,9 +37,9 @@ export function GenerateTab({ activeScene }) {
   const {
     provider, apiKey, localBaseUrl, currentModel,
     generateHistory, saveGeneration, overwriteGeneration, deleteGeneration,
-    loadGenerateHistory, logAIUsage
+    loadGenerateHistory, logAIUsage, getPromptProfile
   } = useAI()
-  const { acts, activeNovel, characters, resources } = useNovel()
+  const { acts, activeNovel, activeScene: currentScene, novelSettings, resources } = useNovel()
   const { openModal } = useModal()
 
   const [prompt, setPrompt] = useState('')
@@ -66,12 +67,6 @@ export function GenerateTab({ activeScene }) {
   const buildPrompt = useCallback(() => {
     if (!prompt.trim()) return null
 
-    let fullPrompt = isSpanish
-      ? 'Eres un asistente de escritura creativa. Vas a escribir prosa narrativa original.'
-      : 'You are a creative writing assistant. You will write original narrative prose.'
-
-    fullPrompt += '\n\n'
-
     const ctx = gatherContext(acts, activeScene, scopeOption, {
       wordCount: scopeParam,
       sceneCount: scopeParam,
@@ -83,50 +78,25 @@ export function GenerateTab({ activeScene }) {
       setContextWarning(null)
     }
 
-    if (ctx.text) {
-      fullPrompt += isSpanish
-        ? `[CONTEXTO DE REFERENCIA]:\n${ctx.text}\n\n`
-        : `[REFERENCE CONTEXT]:\n${ctx.text}\n\n`
-    }
-
-    if (activeScene?.pov) {
-      fullPrompt += isSpanish
-        ? `[PUNTO DE VISTA]: La escena está escrita desde el POV de ${activeScene.pov}.\n\n`
-        : `[POINT OF VIEW]: The scene is written from the POV of ${activeScene.pov}.\n\n`
-    }
-
-    if (toneHint.trim()) {
-      fullPrompt += isSpanish
-        ? `[TONO/ESTILO SOLICITADO]: ${toneHint}\n\n`
-        : `[REQUESTED TONE/STYLE]: ${toneHint}\n\n`
-    }
-
+    let knowledgeBase = ''
     if (includeKnowledgeBase && resources?.length) {
       const activeRes = resources.filter(r => r.activeForAI && r.content)
       if (activeRes.length > 0) {
-        const kb = activeRes.map(r => `[${r.name}]\n${r.content}`).join('\n\n')
-        fullPrompt += isSpanish
-          ? `[BASE DE CONOCIMIENTO]:\n${kb}\n\n`
-          : `[KNOWLEDGE BASE]:\n${kb}\n\n`
+        knowledgeBase = activeRes.map(r => `[${r.name}]\n${r.content}`).join('\n\n')
       }
     }
 
-    if (wordCountTarget && parseInt(wordCountTarget) > 0) {
-      fullPrompt += isSpanish
-        ? `[OBJETIVO DE PALABRAS]: Escribe APROXIMADAMENTE ${wordCountTarget} palabras.\n\n`
-        : `[WORD COUNT TARGET]: Write APPROXIMATELY ${wordCountTarget} words.\n\n`
+    const variables = {
+      ...buildBasePromptVariables({ activeNovel, novelSettings, activeScene: currentScene || activeScene }),
+      'author.request': prompt,
+      'context.previous': ctx.text,
+      'context.knowledge_base': knowledgeBase,
+      'generate.word_count': wordCountTarget && parseInt(wordCountTarget) > 0 ? wordCountTarget : '',
+      'generate.tone': toneHint,
     }
-
-    fullPrompt += isSpanish
-      ? `[SOLICITUD DEL AUTOR]:\n${prompt}\n\n`
-      : `[AUTHOR\'S REQUEST]:\n${prompt}\n\n`
-
-    fullPrompt += isSpanish
-      ? 'IMPORTANTE: Escribe ÚNICAMENTE el texto narrativo en prosa (sin introducciones, sin explicaciones, sin comentarios meta). No uses markdown. Usa saltos de línea normales para separar párrafos.'
-      : 'IMPORTANT: Write ONLY the narrative prose text (no introductions, no explanations, no meta commentary). Do not use markdown. Use regular line breaks to separate paragraphs.'
-
-    return fullPrompt
-  }, [prompt, toneHint, wordCountTarget, scopeOption, scopeParam, includeKnowledgeBase, activeScene, acts, resources, isSpanish])
+    const profile = getPromptProfile('generate', 'default')
+    return flattenPromptMessages(renderPromptMessages(profile, variables))
+  }, [prompt, toneHint, wordCountTarget, scopeOption, scopeParam, includeKnowledgeBase, activeScene, currentScene, acts, resources, activeNovel, novelSettings, getPromptProfile])
 
   const handleGenerate = async () => {
     const fullPrompt = buildPrompt()

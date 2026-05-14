@@ -177,7 +177,10 @@ export const ExportService = {
 
       for (const table of db.tables) {
         if (DEVICE_ONLY_TABLES.has(table.name)) continue;
-        data.tables[table.name] = await table.toArray();
+        const rows = await table.toArray();
+        data.tables[table.name] = table.name === 'promptProfiles'
+          ? rows.filter(row => row.scope === 'novel')
+          : rows;
       }
 
       let payload = await compressToJson(data);

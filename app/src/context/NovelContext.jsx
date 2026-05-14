@@ -315,7 +315,7 @@ export const NovelProvider = ({ children }) => {
       db.characters, db.locations, db.objects, db.lore,
       db.resources, db.dailyProgress, db.debateAgents, db.debateSessions,
       db.oracleEntries, db.lastRewrite, db.mpcIgnored, db.nexusLinks,
-      db.generateHistory, db.novelSettings
+      db.generateHistory, db.novelSettings, db.promptProfiles
     ], async () => {
       // Delete narrative structure
       const actsToDelete = await db.acts.where('novelId').equals(id).toArray();
@@ -344,6 +344,7 @@ export const NovelProvider = ({ children }) => {
       await db.mpcIgnored.where('novelId').equals(id).delete();
       await db.generateHistory.where('novelId').equals(id).delete();
       await db.novelSettings.delete(id);
+      await db.promptProfiles.where('novelId').equals(id).delete();
       // Delete the novel itself
       await db.novels.delete(id);
     });

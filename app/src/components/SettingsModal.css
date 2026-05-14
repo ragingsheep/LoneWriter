@@ -391,6 +391,129 @@
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Prompt editor */
+.settings-section--prompts {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-section__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.prompt-settings-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 10px;
+}
+
+.prompt-variable-row,
+.prompt-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prompt-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prompt-message-card {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition: border-color var(--trans-fast), background var(--trans-fast);
+}
+
+.prompt-message-card--active {
+  border-color: var(--border-accent);
+  background: var(--accent-dim);
+}
+
+.prompt-message-card__header,
+.prompt-message-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prompt-message-card__header {
+  margin-bottom: 8px;
+}
+
+.prompt-message-card__actions {
+  margin-top: 8px;
+}
+
+.prompt-role-select {
+  width: 110px;
+}
+
+.prompt-label-input {
+  flex: 1;
+}
+
+.prompt-enabled-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.prompt-message-textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+.prompt-message-textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.prompt-preview {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: 10px 12px;
+}
+
+.prompt-preview summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.prompt-preview pre {
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 
 /* ============================================
    RESPONSIVE – MOBILE (< 768px)
@@ -497,6 +620,20 @@
     flex-wrap: wrap;
     justify-content: flex-start;
     gap: 8px;
+  }
+
+  .prompt-settings-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .prompt-message-card__header {
+    flex-wrap: wrap;
+  }
+
+  .prompt-role-select,
+  .prompt-label-input {
+    width: 100%;
+    flex: none;
   }
 
   .cloud-sync-card__footer span {

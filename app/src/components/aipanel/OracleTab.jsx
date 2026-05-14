@@ -17,6 +17,7 @@ import { retrieveRelevantFragments } from '../../services/ragService'
 import { Tooltip } from '../Tooltip'
 import { renderMarkdown } from '../../utils/renderMarkdown'
 import { normalizeTextForDisplay } from './aiPanelHelpers'
+import { buildBasePromptVariables, flattenPromptMessages, renderPromptMessages } from '../../services/promptProfiles'
 
 function OracleTab({ activeScene }) {
   const { t } = useTranslation('ai')
@@ -25,9 +26,9 @@ function OracleTab({ activeScene }) {
     oracleHistory, addOracleEntry, clearOracleHistory,
     deleteOracleEntry, toggleOracleCorrected, checkedEntries,
     oracleStatus, checkOracleResponse, resetOracleStatus,
-    logAIUsage
+    logAIUsage, getPromptProfile
   } = useAI()
-  const { activeNovel, acts } = useNovel()
+  const { activeNovel, novelSettings, acts } = useNovel()
   const { openModal } = useModal()
 
   const [isChecking, setIsChecking] = useState(false)
@@ -109,34 +110,23 @@ function OracleTab({ activeScene }) {
         ? fragments.map((f, i) => `[Fragmento ${i + 1}]: ${f}`).join('\n\n')
         : ''
 
-      const oraclePrompt = t('oracle_prompt')
       const isSpanish = i18n.language === 'es'
 
-      const oracleCompendium = isSpanish ? '--- TEXTO DEL COMPENDIO (FUENTE DE VERDAD ABSOLUTA) ---' : '--- COMPENDIUM TEXT (ABSOLUTE SOURCE OF TRUTH) ---';
-      const oraclePrevCtx = isSpanish ? '--- CONTEXTO ANTERIOR DEL MANUSCRITO (SOLO COMO REFERENCIA, NUNCA DESMIENTE AL COMPENDIO) ---' : '--- PREVIOUS MANUSCRIPT CONTEXT (ONLY AS REFERENCE, NEVER DISPUTE THE COMPENDIUM) ---';
       const oracleNoComp = isSpanish ? 'No se encontraron fichas relevantes del Compendio para este texto.' : 'No relevant Compendium entries found for this text.';
       const oracleNoPrev = isSpanish ? 'No hay contexto anterior indexado aún (o se está usando sin RAG).' : 'No previous context indexed yet (or RAG is not being used).';
-      const oracleText = isSpanish ? '--- TEXTO A ANALIZAR ---' : '--- TEXT TO ANALYZE ---';
-      const oracleAnswer = isSpanish ? '--- TU RESPUESTA ---' : '--- YOUR ANSWER ---';
-
-      const fullPrompt = `${oraclePrompt}
-
-${oracleCompendium}
-${compendiumInfo || oracleNoComp}
-
-${oraclePrevCtx}
-${ragContext || oracleNoPrev}
-
-${oracleText}
-${plainText}
-
-${oracleAnswer}`
+      const fullPrompt = flattenPromptMessages(renderPromptMessages(getPromptProfile('oracle', 'default'), {
+        ...buildBasePromptVariables({ activeNovel, novelSettings, activeScene }),
+        'context.compendium': compendiumInfo || oracleNoComp,
+        'context.rag': ragContext || oracleNoPrev,
+        'oracle.paragraph': plainText,
+      }))
 
       const response = await AIService.rewrite(fullPrompt, 'style', '', {
         provider,
         apiKey,
         model: currentModel,
         localBaseUrl,
+        promptAlreadyRendered: true,
       })
 
       logAIUsage(response.usage)

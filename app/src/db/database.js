@@ -99,4 +99,9 @@ db.version(16).stores({
   novelSettings: 'novelId'
 });
 
+// v17: Custom AI Prompt Settings — role-based prompt profiles per tab/goal
+db.version(17).stores({
+  promptProfiles: '++id, [scope+novelId+tab+goal], scope, novelId, tab, goal, updatedAt'
+});
+
 export default db;

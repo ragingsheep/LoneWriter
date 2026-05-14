@@ -34,12 +34,21 @@ export const AIService = {
    * Generic rewrite function
    */
   rewrite: async (text, goal, promptTemplate, config) => {
-    const { provider, apiKey, model, customInstructions, pov, knowledgeBase, previousContext } = config;
+    const { provider, apiKey, model, customInstructions, pov, knowledgeBase, previousContext, promptAlreadyRendered } = config;
     const isSpanish = i18n.language === 'es';
 
     if (!apiKey && provider !== 'local') throw new Error(isSpanish ? 'Se requiere una clave API para usar la IA.' : 'An API key is required to use the AI.');
 
     let finalPrompt = promptTemplate;
+    if (promptAlreadyRendered) {
+      if (provider === 'google') return await callGemini(finalPrompt, apiKey, model);
+      if (provider === 'openai') return await callOpenAI(finalPrompt, apiKey, model);
+      if (provider === 'anthropic') return await callClaude(finalPrompt, apiKey, model);
+      if (provider === 'openrouter') return await callOpenRouter(finalPrompt, apiKey, model);
+      if (provider === 'local') return await callLocal(finalPrompt, model, config.localBaseUrl);
+      throw new Error(`Proveedor de IA desconocido: ${provider}`);
+    }
+
     const noneText = isSpanish ? 'Ninguna.' : 'None.';
 
     if (goal === 'tone') {
@@ -191,7 +200,7 @@ MANDATORY STRUCTURE PER TYPE:
    * Agent chat for the Debate Forum
    */
   agentChat: async (agent, history, config) => {
-    const { provider, apiKey, model, localBaseUrl, sceneContent, pov, roundInstruction, knowledgeBase, compendiumContext } = config;
+    const { provider, apiKey, model, localBaseUrl, sceneContent, pov, roundInstruction, knowledgeBase, compendiumContext, renderedPromptMessages } = config;
     const isSpanish = i18n.language === 'es';
 
     const errorAPI = isSpanish ? 'Se requiere una clave API para usar la IA.' : 'An API key is required to use the AI.';
@@ -203,6 +212,20 @@ MANDATORY STRUCTURE PER TYPE:
     if (!apiKey && provider !== 'local') throw new Error(errorAPI);
 
     let systemPrompt = agent.systemPrompt + '\n\n' + debateDirective;
+
+    if (renderedPromptMessages?.length) {
+      const systemMessages = renderedPromptMessages.filter(m => m.role === 'system').map(m => m.content).join('\n\n');
+      const chatMessages = renderedPromptMessages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+
+      if (provider === 'google') return await callGeminiChat(systemMessages || systemPrompt, chatMessages, apiKey, model);
+      if (provider === 'openai') return await callOpenAIChat(systemMessages || systemPrompt, chatMessages, apiKey, model);
+      if (provider === 'anthropic') return await callClaudeChat(systemMessages || systemPrompt, chatMessages, apiKey, model);
+      if (provider === 'openrouter') return await callOpenRouterChat(systemMessages || systemPrompt, chatMessages, apiKey, model);
+      if (provider === 'local') return await callLocalChat(systemMessages || systemPrompt, chatMessages, model, localBaseUrl);
+      throw new Error(errorProvider);
+    }
 
     if (knowledgeBase) {
       const kbLabel = isSpanish ? '[BASE DE CONOCIMIENTO Y REFERENCIAS DEL AUTOR]:' : "[AUTHOR'S KNOWLEDGE BASE AND REFERENCES]:";

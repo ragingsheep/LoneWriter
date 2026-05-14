@@ -7,6 +7,7 @@ import { AIService } from '../services/aiService';
 import { useAIConfig, DEFAULT_MODELS } from './useAIConfig';
 import { useAIMpc } from './useAIMpc';
 import { useAIUsage } from './useAIUsage';
+import { usePromptProfiles } from './usePromptProfiles';
 
 // Re-export for backward-compat (SettingsModal imports DEFAULT_MODELS from here)
 export { DEFAULT_MODELS };
@@ -58,6 +59,7 @@ export const AIProvider = ({ children }) => {
   const aiConfig = useAIConfig();
   const aiMpc    = useAIMpc({ activeNovel });
   const aiUsage  = useAIUsage({ db, provider: aiConfig.provider, currentModel: aiConfig.currentModel });
+  const promptProfiles = usePromptProfiles({ activeNovel });
 
   // ── Rewrite selection & result ─────────────────────────────────────────────
   const [selection, setSelection]     = useState('');
@@ -539,6 +541,7 @@ export const AIProvider = ({ children }) => {
     ...aiConfig,
     ...aiMpc,
     ...aiUsage,
+    ...promptProfiles,
     selection, setSelection,
     oracleText, setOracleText,
     lastRewrite, setLastRewrite, saveLastRewrite, discardLastRewrite,

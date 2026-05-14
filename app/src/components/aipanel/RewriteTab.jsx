@@ -16,15 +16,16 @@ import { AIService } from '../../services/aiService'
 import { Tooltip } from '../Tooltip'
 import { renderMarkdown } from '../../utils/renderMarkdown'
 import { QUICK_GOALS, normalizeHtmlForEditor, extractPreviousContext } from './aiPanelHelpers'
+import { buildBasePromptVariables, flattenPromptMessages, renderPromptMessages } from '../../services/promptProfiles'
 
 export function RewriteTab({ activeScene }) {
   const { t } = useTranslation('ai')
   const {
     selection, provider, apiKey, localBaseUrl, prompts, currentModel,
     lastRewrite, setLastRewrite, saveLastRewrite, discardLastRewrite, updatePrompt,
-    logAIUsage, oracleStatus
+    logAIUsage, oracleStatus, getPromptProfile
   } = useAI();
-  const { resources } = useNovel();
+  const { activeNovel, novelSettings, resources } = useNovel();
   const { openModal } = useModal();
 
   const [instruction, setInstruction] = useState('')
@@ -59,15 +60,26 @@ export function RewriteTab({ activeScene }) {
       console.log('[Rewrite] previousContext:', previousContext ? `${previousContext.substring(0, 80)}...` : 'null');
 
 
-      const response = await AIService.rewrite(selection, activeGoal, instruction ? "" : (activeGoal ? prompts[activeGoal] : ""), {
+      const profile = getPromptProfile('rewrite', activeGoal || 'shared')
+      const promptTemplate = flattenPromptMessages(renderPromptMessages(profile, {
+        ...buildBasePromptVariables({ activeNovel, novelSettings, activeScene }),
+        'selection.text': selection,
+        'rewrite.goal': activeGoal || 'shared',
+        'rewrite.instruction': instruction,
+        'context.previous': previousContext || '',
+        'context.knowledge_base': knowledgeBase || '',
+      }))
+
+      const response = await AIService.rewrite(selection, activeGoal, promptTemplate, {
         provider,
         apiKey,
         model: currentModel,
         localBaseUrl,
-        customInstructions: instruction,
+        customInstructions: '',
         pov: activeScene?.pov,
-        knowledgeBase,
-        previousContext,
+        knowledgeBase: null,
+        previousContext: null,
+        promptAlreadyRendered: true,
       });
       logAIUsage(response.usage);
       saveLastRewrite(response.text, activeGoal, instruction, selection);
