@@ -18,6 +18,7 @@ import { Tooltip } from '../Tooltip'
 import { renderMarkdown } from '../../utils/renderMarkdown'
 import { normalizeTextForDisplay } from './aiPanelHelpers'
 import { buildBasePromptVariables, flattenPromptMessages, renderPromptMessages } from '../../services/promptProfiles'
+import PromptSettingsMenu from './PromptSettingsMenu'
 
 function OracleTab({ activeScene }) {
   const { t } = useTranslation('ai')
@@ -197,6 +198,9 @@ function OracleTab({ activeScene }) {
 
   return (
     <div className="oracle-tab">
+      <div className="ai-tab-prompt-toolbar">
+        <PromptSettingsMenu tab="oracle" />
+      </div>
       {/* Detected Compendium Entities */}
       {oracleStatus.detectedEntities?.length > 0 && (
         <div className="oracle-coreference-section">

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 
 export function useAppUI() {
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
-  const [aiPanelTab, setAiPanelTab] = useState('rewrite')
+  const [aiPanelTab, setAiPanelTab] = useState('generate')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState('cloud')
   const [menuOpen, setMenuOpen] = useState(false)

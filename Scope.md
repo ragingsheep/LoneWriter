@@ -346,8 +346,15 @@ Prompt customization must support braced dot-path variables. Variables are inser
 
 **UI requirements:**
 
-- Prompt customization lives in Settings > Artificial Intelligence, with sub-sections for Generate, Rewrite, Debate, and Oracle.
-- Each tab shows its effective prompt as ordered message blocks, not as one opaque textarea.
+- Prompt customization lives inside the AI Assistant panel, not in the global Settings modal.
+- The AI Assistant opens to **Generate** by default.
+- Each AI Assistant tab has a small settings button in its tab header or top toolbar.
+- Clicking the settings button opens an in-panel prompt settings menu/modal scoped to the active tab.
+- Generate opens the Generate prompt profile editor.
+- Rewrite opens the Rewrite prompt profile editor and allows choosing/editing the shared fallback or any rewrite goal profile.
+- Debate opens the global Debate prompt profile editor; participant/agent prompt editing remains in the existing agent management flow.
+- Oracle opens the Oracle prompt profile editor.
+- Each prompt editor shows its effective prompt as ordered message blocks, not as one opaque textarea.
 - Users can add, disable, delete, duplicate, and reorder message blocks.
 - Users can insert variables from a searchable variable picker.
 - A read-only preview shows the final interpolated prompt/messages for the active scene before saving or testing.

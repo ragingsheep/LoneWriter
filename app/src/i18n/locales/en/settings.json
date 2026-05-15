@@ -92,6 +92,7 @@
     "enabled": "Enabled",
     "up": "Up",
     "down": "Down",
+    "duplicate": "Duplicate",
     "delete": "Delete",
     "add_block": "Add message block",
     "reset": "Reset default",

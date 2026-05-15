@@ -1,0 +1,238 @@
+.prompt-settings-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-glass-ui);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.prompt-settings-trigger:hover {
+  color: var(--accent-light);
+  border-color: var(--border-accent);
+  background: var(--accent-dim);
+}
+
+.ai-tab-prompt-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.prompt-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(4px);
+}
+
+.prompt-settings-panel {
+  width: clamp(720px, 58vw, 1040px);
+  min-width: min(720px, calc(100vw - 28px));
+  height: min(82vh, 860px);
+  max-width: calc(100vw - 28px);
+  max-height: calc(100vh - 28px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.prompt-settings-panel__header,
+.prompt-settings-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.prompt-settings-panel__footer {
+  border-top: 1px solid var(--border);
+  border-bottom: none;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.prompt-settings-panel__header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+}
+
+.prompt-settings-panel__header p,
+.prompt-settings-hint {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.prompt-settings-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+}
+
+.prompt-settings-close:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.prompt-settings-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.prompt-settings-toolbar {
+  display: grid;
+  grid-template-columns: 1fr 190px;
+  gap: 10px;
+}
+
+.prompt-settings-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.prompt-settings-toolbar select,
+.prompt-variable-row select,
+.prompt-message-card select,
+.prompt-message-card input,
+.prompt-message-card textarea {
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.prompt-settings-toolbar select,
+.prompt-variable-row select,
+.prompt-message-card select,
+.prompt-message-card input {
+  padding: 7px 10px;
+}
+
+.prompt-variable-row,
+.prompt-message-card__header,
+.prompt-message-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.prompt-variable-row select {
+  flex: 1;
+  min-width: 220px;
+}
+
+.prompt-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prompt-message-card {
+  padding: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.prompt-message-card--active {
+  border-color: var(--border-accent);
+  background: var(--accent-dim);
+}
+
+.prompt-message-card__header label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.prompt-message-card__header input[type="text"],
+.prompt-message-card__header input:not([type]) {
+  flex: 1;
+  min-width: 160px;
+}
+
+.prompt-message-card textarea {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  resize: vertical;
+  min-height: 112px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  line-height: 1.5;
+}
+
+.prompt-message-card__actions {
+  margin-top: 8px;
+}
+
+.prompt-preview {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.prompt-preview summary {
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.prompt-preview pre {
+  max-height: 240px;
+  overflow: auto;
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 767px) {
+  .prompt-settings-panel {
+    width: 100vw;
+    height: 100vh;
+    min-width: 0;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .prompt-settings-toolbar {
+    grid-template-columns: 1fr;
+  }
+}

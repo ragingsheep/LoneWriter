@@ -9,7 +9,6 @@ import { Tooltip } from './Tooltip';
 import { useAI, DEFAULT_MODELS } from '../context/AIContext';
 import { useNovel } from '../context/NovelContext';
 import { GoogleDriveService } from '../services/googleDriveService';
-import { PROMPT_TABS, PROMPT_VARIABLES, buildBasePromptVariables, flattenPromptMessages, getDefaultPromptProfile, renderPromptMessages } from '../services/promptProfiles';
 import LanguageSelector from './LanguageSelector';
 import './SettingsModal.css';
 
@@ -59,12 +58,10 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'cloud', theme, setTheme,
   const {
     provider, setProvider, apiKey, setApiKey,
     localBaseUrl, setLocalBaseUrl,
-    allConfigs, setModelForProvider, usageStats, testConnection,
-    promptProfiles, getPromptProfile, savePromptProfile, resetPromptProfile
+    allConfigs, setModelForProvider, usageStats, testConnection
   } = useAI();
 
   const {
-    activeNovel, activeScene, novelSettings,
     isCloudSyncEnabled, cloudSyncStatus, lastCloudSync,
     toggleCloudSync, performCloudSync
   } = useNovel();
@@ -75,12 +72,6 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'cloud', theme, setTheme,
   const [revisions, setRevisions] = useState([]);
   const [testConnStatus, setTestConnStatus] = useState(null);
   const [testConnResult, setTestConnResult] = useState(null);
-  const [promptKey, setPromptKey] = useState('generate|default');
-  const [promptScope, setPromptScope] = useState('global');
-  const [promptDraft, setPromptDraft] = useState(() => getDefaultPromptProfile('generate', 'default'));
-  const [selectedVariable, setSelectedVariable] = useState('novel.tense');
-  const [activePromptBlock, setActivePromptBlock] = useState(0);
-  const [promptSaved, setPromptSaved] = useState(false);
 
   const updateTestConnection = (status, result = null) => {
     setTestConnStatus(status);
@@ -116,95 +107,6 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'cloud', theme, setTheme,
   };
 
   if (!isOpen) return null;
-
-  const [selectedPromptTab, selectedPromptGoal] = promptKey.split('|');
-
-  const loadPromptDraft = (nextKey = promptKey, nextScope = promptScope) => {
-    const [tab, goal] = nextKey.split('|');
-    const novelId = nextScope === 'novel' ? activeNovel?.id ?? null : null;
-    const scoped = promptProfiles.find(p => p.scope === nextScope && p.novelId === novelId && p.tab === tab && p.goal === goal);
-    const base = scoped || getDefaultPromptProfile(tab, goal);
-    setPromptDraft({
-      ...base,
-      scope: nextScope,
-      novelId: nextScope === 'novel' ? activeNovel?.id ?? null : null,
-      messages: (base.messages || []).map((m, index) => ({ ...m, order: index })),
-    });
-    setActivePromptBlock(0);
-  };
-
-  const updatePromptMessage = (index, patch) => {
-    setPromptDraft(prev => ({
-      ...prev,
-      messages: prev.messages.map((msg, i) => i === index ? { ...msg, ...patch } : msg)
-    }));
-  };
-
-  const addPromptMessage = () => {
-    setPromptDraft(prev => ({
-      ...prev,
-      messages: [...prev.messages, { role: 'user', label: t('prompts.new_block'), content: '', enabled: true, order: prev.messages.length }]
-    }));
-  };
-
-  const deletePromptMessage = (index) => {
-    setPromptDraft(prev => ({
-      ...prev,
-      messages: prev.messages.filter((_, i) => i !== index).map((m, i) => ({ ...m, order: i }))
-    }));
-    setActivePromptBlock(0);
-  };
-
-  const movePromptMessage = (index, direction) => {
-    setPromptDraft(prev => {
-      const next = [...prev.messages];
-      const target = index + direction;
-      if (target < 0 || target >= next.length) return prev;
-      [next[index], next[target]] = [next[target], next[index]];
-      return { ...prev, messages: next.map((m, i) => ({ ...m, order: i })) };
-    });
-    setActivePromptBlock(Math.max(0, activePromptBlock + direction));
-  };
-
-  const insertPromptVariable = () => {
-    if (!promptDraft?.messages?.[activePromptBlock]) return;
-    const token = `{${selectedVariable}}`;
-    const current = promptDraft.messages[activePromptBlock].content || '';
-    updatePromptMessage(activePromptBlock, { content: `${current}${current ? ' ' : ''}${token}` });
-  };
-
-  const savePromptDraft = async () => {
-    await savePromptProfile({ ...promptDraft, tab: selectedPromptTab, goal: selectedPromptGoal });
-    setPromptSaved(true);
-    setTimeout(() => setPromptSaved(false), 1800);
-  };
-
-  const resetPromptDraft = async () => {
-    await resetPromptProfile(selectedPromptTab, selectedPromptGoal, promptScope);
-    const fresh = getDefaultPromptProfile(selectedPromptTab, selectedPromptGoal);
-    setPromptDraft({ ...fresh, scope: promptScope, novelId: promptScope === 'novel' ? activeNovel?.id ?? null : null });
-  };
-
-  const previewPrompt = promptDraft
-    ? flattenPromptMessages(renderPromptMessages(promptDraft, {
-      ...buildBasePromptVariables({ activeNovel, novelSettings, activeScene }),
-      'selection.text': t('prompts.preview_selection'),
-      'author.request': t('prompts.preview_request'),
-      'rewrite.goal': selectedPromptGoal,
-      'rewrite.instruction': t('prompts.preview_instruction'),
-      'context.previous': t('prompts.preview_context'),
-      'context.compendium': t('prompts.preview_compendium'),
-      'context.knowledge_base': t('prompts.preview_knowledge'),
-      'context.rag': t('prompts.preview_rag'),
-      'oracle.paragraph': t('prompts.preview_paragraph'),
-      'debate.transcript': t('prompts.preview_transcript'),
-      'debate.agent_name': 'Editor',
-      'debate.agent_prompt': t('prompts.preview_agent_prompt'),
-      'debate.round_instruction': t('prompts.preview_round'),
-      'generate.word_count': '500',
-      'generate.tone': t('prompts.preview_tone'),
-    }))
-    : '';
 
   const handleCloudLink = async () => {
     setIsSyncing(true);
@@ -604,91 +506,6 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'cloud', theme, setTheme,
                     />
                   </div>
                 )}
-              </div>
-
-              <div className="settings-section settings-section--prompts">
-                <span className="settings-section__title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Sparkles size={14} />
-                  {t('prompts.title')}
-                </span>
-                <p className="settings-section__hint">{t('prompts.hint')}</p>
-
-                <div className="prompt-settings-toolbar">
-                  <div className="ai-settings-group">
-                    <label>{t('prompts.profile')}</label>
-                    <select
-                      className="ai-settings-select"
-                      value={promptKey}
-                      onChange={(e) => {
-                        setPromptKey(e.target.value);
-                        loadPromptDraft(e.target.value, promptScope);
-                      }}
-                    >
-                      {PROMPT_TABS.map(item => (
-                        <option key={`${item.tab}|${item.goal}`} value={`${item.tab}|${item.goal}`}>
-                          {t(`prompts.profile_names.${item.key}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="ai-settings-group">
-                    <label>{t('prompts.scope')}</label>
-                    <select
-                      className="ai-settings-select"
-                      value={promptScope}
-                      onChange={(e) => {
-                        setPromptScope(e.target.value);
-                        loadPromptDraft(promptKey, e.target.value);
-                      }}
-                    >
-                      <option value="global">{t('prompts.scope_global')}</option>
-                      <option value="novel" disabled={!activeNovel}>{t('prompts.scope_novel')}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="prompt-variable-row">
-                  <select className="ai-settings-select" value={selectedVariable} onChange={(e) => setSelectedVariable(e.target.value)}>
-                    {PROMPT_VARIABLES.map(([key]) => <option key={key} value={key}>{`{${key}}`}</option>)}
-                  </select>
-                  <button className="btn btn-ghost btn-sm" onClick={insertPromptVariable}>{t('prompts.insert_variable')}</button>
-                </div>
-
-                <div className="prompt-message-list">
-                  {promptDraft.messages.map((msg, index) => (
-                    <div key={index} className={`prompt-message-card ${activePromptBlock === index ? 'prompt-message-card--active' : ''}`} onClick={() => setActivePromptBlock(index)}>
-                      <div className="prompt-message-card__header">
-                        <select className="ai-settings-select prompt-role-select" value={msg.role} onChange={(e) => updatePromptMessage(index, { role: e.target.value })}>
-                          <option value="system">system</option>
-                          <option value="user">user</option>
-                          <option value="assistant">assistant</option>
-                        </select>
-                        <input className="ai-settings-input prompt-label-input" value={msg.label || ''} onChange={(e) => updatePromptMessage(index, { label: e.target.value })} />
-                        <label className="prompt-enabled-toggle">
-                          <input type="checkbox" checked={msg.enabled !== false} onChange={(e) => updatePromptMessage(index, { enabled: e.target.checked })} />
-                          {t('prompts.enabled')}
-                        </label>
-                      </div>
-                      <textarea className="prompt-message-textarea" rows={5} value={msg.content || ''} onChange={(e) => updatePromptMessage(index, { content: e.target.value })} />
-                      <div className="prompt-message-card__actions">
-                        <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); movePromptMessage(index, -1); }} disabled={index === 0}>{t('prompts.up')}</button>
-                        <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); movePromptMessage(index, 1); }} disabled={index === promptDraft.messages.length - 1}>{t('prompts.down')}</button>
-                        <button className="btn btn-ghost btn-sm" onClick={(e) => { e.stopPropagation(); deletePromptMessage(index); }} disabled={promptDraft.messages.length <= 1}>{t('prompts.delete')}</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="prompt-actions-row">
-                  <button className="btn btn-ghost btn-sm" onClick={addPromptMessage}>{t('prompts.add_block')}</button>
-                  <button className="btn btn-ghost btn-sm" onClick={resetPromptDraft}>{t('prompts.reset')}</button>
-                  <button className="btn btn-primary btn-sm" onClick={savePromptDraft}>{promptSaved ? t('prompts.saved') : t('prompts.save')}</button>
-                </div>
-
-                <details className="prompt-preview">
-                  <summary>{t('prompts.preview')}</summary>
-                  <pre>{previewPrompt}</pre>
-                </details>
               </div>
             </div>
           </div>

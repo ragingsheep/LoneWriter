@@ -92,6 +92,7 @@
     "enabled": "Activo",
     "up": "Subir",
     "down": "Bajar",
+    "duplicate": "Duplicar",
     "delete": "Eliminar",
     "add_block": "Añadir bloque de mensaje",
     "reset": "Restaurar defecto",

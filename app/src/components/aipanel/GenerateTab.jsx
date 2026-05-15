@@ -13,6 +13,7 @@ import { AIService } from '../../services/aiService'
 import { gatherContext, SCOPE_OPTIONS, estimateTokens } from '../../services/contextGatherer'
 import { buildBasePromptVariables, flattenPromptMessages, renderPromptMessages } from '../../services/promptProfiles'
 import { Tooltip } from '../Tooltip'
+import PromptSettingsMenu from './PromptSettingsMenu'
 
 const SCOPE_LABELS = {
   [SCOPE_OPTIONS.NONE]: { key: 'scope_none' },
@@ -273,6 +274,9 @@ export function GenerateTab({ activeScene }) {
 
   return (
     <div className="generate-tab">
+      <div className="ai-tab-prompt-toolbar">
+        <PromptSettingsMenu tab="generate" />
+      </div>
       {/* Prompt */}
       <div className="generate-section">
         <div className="generate-section__label">

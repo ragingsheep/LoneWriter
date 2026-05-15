@@ -17,6 +17,7 @@ import { Tooltip } from '../Tooltip'
 import { renderMarkdown } from '../../utils/renderMarkdown'
 import { QUICK_GOALS, normalizeHtmlForEditor, extractPreviousContext } from './aiPanelHelpers'
 import { buildBasePromptVariables, flattenPromptMessages, renderPromptMessages } from '../../services/promptProfiles'
+import PromptSettingsMenu from './PromptSettingsMenu'
 
 export function RewriteTab({ activeScene }) {
   const { t } = useTranslation('ai')
@@ -111,6 +112,9 @@ export function RewriteTab({ activeScene }) {
 
   return (
     <div className="rewrite-tab">
+      <div className="ai-tab-prompt-toolbar">
+        <PromptSettingsMenu tab="rewrite" />
+      </div>
       {/* Original text */}
       <div className="rewrite-section">
         <div className="rewrite-section__label">

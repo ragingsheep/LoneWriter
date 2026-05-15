@@ -19,6 +19,7 @@ import { Tooltip } from '../Tooltip'
 import { renderMarkdown } from '../../utils/renderMarkdown'
 import { normalizeTextForDisplay } from './aiPanelHelpers'
 import { buildBasePromptVariables, renderPromptMessages } from '../../services/promptProfiles'
+import PromptSettingsMenu from './PromptSettingsMenu'
 
 function DebateTab({ activeScene }) {
   const { t } = useTranslation('ai')
@@ -295,6 +296,9 @@ function DebateTab({ activeScene }) {
   // ── View: Chat ──────────────────────────────────────────────
   return (
     <div className="debate-tab">
+      <div className="ai-tab-prompt-toolbar">
+        <PromptSettingsMenu tab="debate" />
+      </div>
       {/* Toolbar */}
       <div className="debate-toolbar">
         <div className="debate-agents__list">

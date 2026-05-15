@@ -13,7 +13,7 @@ import DebateTab from './aipanel/DebateTab'
 import OracleTab from './aipanel/OracleTab'
 import './AIPanel.css'
 
-export default function AIPanel({ open, onClose, activeScene, defaultTab = 'rewrite', onOpenSettings }) {
+export default function AIPanel({ open, onClose, activeScene, defaultTab = 'generate', onOpenSettings }) {
   const { t } = useTranslation('ai')
   const [activeTab, setActiveTab] = useState(defaultTab)
   const { apiKey, currentModel } = useAI()
