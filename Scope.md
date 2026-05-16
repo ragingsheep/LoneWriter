@@ -96,7 +96,7 @@ LoneWriter/
 | `ai-apply-generate` | → Editor (RichEditor) | Insert generated HTML at cursor position |
 | `mpc-manual-scan` | → EditorView | Trigger a manual MPC analysis run |
 
-### 3.4 Database Schema (Dexie v17 — 24 tables)
+### 3.4 Database Schema (Dexie v17 — 24 tables; v18 planned — 25 tables)
 
 | Table | Purpose |
 |---|---|
@@ -124,6 +124,7 @@ LoneWriter/
 | `generateHistory` | AI Generate tab history per scene (v15) |
 | `novelSettings` | Per-novel prose settings (tense, language, POV) — **v16** |
 | `promptProfiles` | Custom AI prompt profiles with role-based message blocks — **v17** |
+| `aiModelProfiles` | Provider/model-specific AI parameter presets and function bindings — **planned v18** |
 
 ---
 
@@ -489,9 +490,110 @@ Prompt customization must support braced dot-path variables. Variables are inser
 - Token usage tracking (`aiUsage`)
 - Exponential backoff retry (3 attempts, up to 8s) — non-streaming calls only
 - Streaming (async generator) for Generate tab only
+- AI Model Profiles for provider+model-specific generation parameters (see §4.10.1)
 
 **Out of scope:**
 - Streaming responses on Rewrite/Debate/Oracle · Simultaneous multi-provider calls · Fine-tuning
+
+---
+
+#### 4.10.1 AI Model Profiles `[NOT YET IMPLEMENTED]`
+
+LoneWriter will support reusable **AI Profiles** that bind an AI provider, model, and tuning parameters into a named preset. Profiles make model behavior explicit and repeatable across the AI Assistant while preserving the current BYOK/local-first architecture.
+
+The feature is based on standard AI parameter concepts described in Novelcrafter's AI terminology and model tuning documentation: Temperature, Top P, Max Tokens, Frequency Penalty, Presence Penalty, and Repetition Penalty.
+
+**Profile identity and scoping:**
+
+- An AI Profile is unique by `provider + model + profile name`.
+- Profiles are stored locally in IndexedDB.
+- Profiles are device-level by default; they are not included in `.lwrt` exports unless explicitly marked as novel-scoped in a later iteration.
+- Provider/model identity is strict: `Google Gemini > gemini-2.0-flash` and `OpenRouter > gemini-2.0-flash` are different profile namespaces and must not share parameter settings accidentally.
+- Each provider+model pair may have multiple named profiles, e.g. `Balanced`, `Creative Drafting`, `Strict Oracle`, `Low Repetition`.
+- One profile per provider+model can be marked as the default for that provider+model.
+
+**Supported parameters:**
+
+| Parameter | Type / Range | Purpose | Notes |
+|---|---|---|---|
+| `temperature` | decimal, provider-safe range, typically `0`–`2` | Controls randomness/creativity | Higher = more diverse; lower = more focused. UI should explain this. |
+| `topP` | decimal `0`–`1` | Controls nucleus sampling / word-choice diversity | Lower narrows options; higher allows wider vocabulary. |
+| `maxTokens` | integer | Limits generated output length | Mapped to provider-specific `max_tokens`, `maxOutputTokens`, etc. |
+| `frequencyPenalty` | decimal, provider-safe range | Discourages repeated words/phrases | Only sent to providers that support it. |
+| `presencePenalty` | decimal, provider-safe range | Encourages introducing new topics/details | Only sent to providers that support it. |
+| `repetitionPenalty` | decimal, provider-safe range | General repetition control | Primarily for local/OpenRouter-compatible models that support it; omitted where unsupported. |
+
+**Provider compatibility:**
+
+- The UI must show unsupported parameters as disabled or ignored for the selected provider/model.
+- Parameter payloads must be translated per provider:
+  - OpenAI/OpenRouter-compatible APIs: `temperature`, `top_p`, `max_tokens`, `frequency_penalty`, `presence_penalty`, plus `repetition_penalty` only where accepted.
+  - Gemini: `temperature`, `topP`, `maxOutputTokens`; omit unsupported penalties.
+  - Anthropic: `temperature`, `top_p`, `max_tokens`; omit unsupported penalties.
+  - Local OpenAI-compatible servers: send OpenAI-compatible keys and allow `repetition_penalty` when configured.
+- Unsupported parameters should never break a request. They are omitted and surfaced in the profile UI as compatibility notes.
+
+**Settings UI:**
+
+- AI Profiles live in `Settings > Artificial Intelligence`, below provider/model/API key configuration and above usage monitoring.
+- The UI starts from the currently selected Provider and Model and shows profiles for that exact provider/model pair.
+- Users can create, rename, duplicate, delete, and reset profiles.
+- Users can set the default profile for the current provider/model.
+- Parameter controls should be a usable mix of sliders and precise numeric inputs.
+- Each parameter shows a short description and safe range.
+- The UI includes a compact compatibility summary for the active provider/model.
+- A `Test with profile` action should use the selected provider/model/profile parameters and report success/failure without changing the user's saved AI Assistant bindings.
+
+**AI Assistant function bindings:**
+
+Each AI Assistant function can choose its own AI Profile. This lets authors use different model behavior for generation, rewriting, debate, and continuity checking.
+
+| Function | Profile binding requirement |
+|---|---|
+| Generate | Select one AI Profile for prose drafting. Defaults to the provider/model default profile. |
+| Rewrite | Select one shared Rewrite AI Profile, plus optional per-goal overrides for Style, Language, Tone, Length, Clarity, Rhythm, Cohesion, and Character. |
+| Debate | Select one global Debate AI Profile. Optional future extension: per-agent AI Profile overrides. |
+| Oracle | Select one Oracle AI Profile. Default should be low-temperature/focused. |
+
+**Binding UI:**
+
+- Each AI Assistant tab's prompt settings menu also shows the active AI Profile selector for that function.
+- Changing a function's AI Profile affects future requests for that function only.
+- The selector displays provider, model, and profile name, e.g. `Google Gemini · gemini-2.0-flash · Creative Drafting`.
+- If the chosen provider/model is unavailable or missing credentials, the function should show the same provider/API key error flow used today.
+- If a bound profile is deleted, the function falls back to the current provider/model default profile and shows a non-blocking warning.
+
+**Prompt integration:**
+
+- Prompt profiles (§4.3.5) control message content and variables.
+- AI Profiles (§4.10.1) control provider/model and generation parameters.
+- The two systems are independent but selected together before an AI request is sent.
+- The final request pipeline is: select AI function → resolve prompt profile → interpolate variables → resolve AI Profile → map parameters to provider payload → send request.
+
+**Data model:**
+
+- Add a future Dexie table **`aiModelProfiles`** (Dexie v18):
+  ```
+  aiModelProfiles: '++id, [provider+model+name], provider, model, name, isDefault, updatedAt'
+  ```
+- Fields: `id`, `provider`, `model`, `name`, `parameters`, `isDefault`, `createdAt`, `updatedAt`.
+- `parameters` stores `temperature`, `topP`, `maxTokens`, `frequencyPenalty`, `presencePenalty`, `repetitionPenalty` as nullable values so defaults can be inherited per provider.
+- Add profile binding storage, either as fields on `aiModelProfiles` or a companion table such as `aiFunctionProfiles: 'functionKey'`.
+- Binding keys: `generate`, `rewrite.shared`, `rewrite.style`, `rewrite.language`, `rewrite.tone`, `rewrite.length`, `rewrite.clarity`, `rewrite.rhythm`, `rewrite.cohesion`, `rewrite.character`, `debate.global`, `oracle`.
+
+**Defaults:**
+
+- Seed a provider/model default profile when a model is first configured.
+- Recommended initial defaults:
+  - Generate: moderate temperature, generous max tokens.
+  - Rewrite: moderate/low temperature, medium max tokens.
+  - Debate: moderate temperature, medium max tokens.
+  - Oracle: low temperature, constrained max tokens.
+- Defaults must remain conservative and provider-safe.
+
+**Out of scope (this iteration):**
+
+- Automatic parameter optimization · Prompt/model A/B testing · Per-scene AI Profile overrides · Fine-tuning · Cloud-shared profile library
 
 ---
 
@@ -528,7 +630,7 @@ Prompt customization must support braced dot-path variables. Variables are inser
 ### 4.13 Settings (4 tabs)
 
 1. **Cloud & Backup**: Google Drive link/unlink, backup/restore, revision history
-2. **Artificial Intelligence**: Provider, API key, model, base URL, Test Connection
+2. **Artificial Intelligence**: Provider, API key, model, base URL, AI Model Profiles, Test Connection
 3. **Interface**: Theme, font, font size, animated background
 4. **General**: Language, app version, clear cache & reload, credits
 
@@ -606,7 +708,7 @@ A new top-level panel (alongside Editor, Compendium, Nexus, Resources) that hold
 ## 7. Roadmap Summary
 
 ### 🟢 High Priority
-- Mobile PWA polish · Anaphora optimization · Enhanced RAG memory
+- AI Model Profiles (§4.10.1) · Mobile PWA polish · Anaphora optimization · Enhanced RAG memory
 
 ### 🟡 Low Priority
 - `.pdf`/`.docx` import · MCP reference integration · Smart Bootstrap (Markdown import)
